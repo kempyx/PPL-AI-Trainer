@@ -2,16 +2,20 @@ import SwiftUI
 
 struct SettingsView: View {
     @State var viewModel: SettingsViewModel
+    @Environment(\.dependencies) private var dependencies
     @State private var showResetConfirmation = false
+    @State private var showLegSuggestion = false
+    @State private var dismissedSuggestion: ExamLeg?
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    providerCard
-                    aiFeaturesCard
-                    systemPromptCard
+                    examScheduleCard
+                    studyPreferencesCard
                     appearanceCard
+                    feedbackCard
+                    aiAssistantCard
                     dangerZoneCard
                 }
                 .padding()
@@ -28,6 +32,30 @@ struct SettingsView: View {
             } message: {
                 Text("This will delete all stored API keys.")
             }
+            .alert("Reset All Progress?", isPresented: $showResetProgressConfirmation) {
+                Button("Cancel", role: .cancel) {}
+                Button("Reset", role: .destructive) {
+                    resetProgress()
+                }
+            } message: {
+                Text("This will erase all XP, achievements, streaks, bookmarks, notes, answer history, and SRS progress. Your question bank and AI settings will be kept.")
+            }
+            .alert("Switch to \(viewModel.suggestedLeg?.shortTitle ?? "")?", isPresented: $showLegSuggestion) {
+                Button("Not Now", role: .cancel) {
+                    dismissedSuggestion = viewModel.suggestedLeg
+                }
+                Button("Switch") {
+                    viewModel.acceptSuggestedLeg()
+                    dismissedSuggestion = nil
+                }
+            } message: {
+                if let suggested = viewModel.suggestedLeg {
+                    Text("\(suggested.emoji) \(suggested.title) exam is coming up soon. Switch to focus on it?")
+                }
+            }
+        }
+        .onAppear {
+            checkLegSuggestion()
         }
     }
 
@@ -139,6 +167,105 @@ struct SettingsView: View {
 
     // MARK: - Appearance
 
+    private var examScheduleCard: some View {
+        SettingsCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SettingsSectionHeader(icon: "calendar", title: "Exam Schedule", color: .cyan)
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Active Leg")
+                        .font(.subheadline.weight(.medium))
+                    
+                    Picker("Active Leg", selection: $viewModel.activeLeg) {
+                        ForEach(ExamLeg.allCases) { leg in
+                            Text("\(leg.emoji) \(leg.shortTitle)").tag(leg)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    
+                    Text(viewModel.activeLeg.subtitle)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Exam Dates")
+                        .font(.subheadline.weight(.medium))
+                    
+                    examDateRow(leg: .technicalLegal, date: $viewModel.examDateLeg1)
+                    examDateRow(leg: .humanEnvironment, date: $viewModel.examDateLeg2)
+                    examDateRow(leg: .planningNavigation, date: $viewModel.examDateLeg3)
+                }
+            }
+        }
+    }
+    
+    private func examDateRow(leg: ExamLeg, date: Binding<Date?>) -> some View {
+        HStack {
+            Text(leg.emoji)
+            Text(leg.shortTitle)
+                .font(.subheadline)
+            Spacer()
+            if let examDate = date.wrappedValue {
+                DatePicker("", selection: Binding(
+                    get: { examDate },
+                    set: { date.wrappedValue = $0 }
+                ), displayedComponents: .date)
+                .labelsHidden()
+                .datePickerStyle(.compact)
+            } else {
+                Button("Set Date") {
+                    date.wrappedValue = Calendar.current.date(byAdding: .month, value: 2, to: Date())
+                }
+                .font(.caption)
+            }
+        }
+    }
+    
+    private func checkLegSuggestion() {
+        if let suggested = viewModel.suggestedLeg, suggested != dismissedSuggestion {
+            showLegSuggestion = true
+        }
+    }
+
+    // MARK: - Study Preferences
+    
+    private var studyPreferencesCard: some View {
+        SettingsCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SettingsSectionHeader(icon: "book.fill", title: "Study Preferences", color: .green)
+                
+                Toggle("Daily Reminders", isOn: Binding(
+                    get: { viewModel.settingsManager.notificationsEnabled },
+                    set: { viewModel.settingsManager.notificationsEnabled = $0 }
+                ))
+                
+                if viewModel.settingsManager.notificationsEnabled {
+                    HStack {
+                        Text("Reminder Time")
+                            .font(.subheadline)
+                        Spacer()
+                        DatePicker("", selection: Binding(
+                            get: { viewModel.settingsManager.reminderTime },
+                            set: { viewModel.settingsManager.reminderTime = $0 }
+                        ), displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                    }
+                }
+                
+                Toggle("Streak Protection", isOn: Binding(
+                    get: { viewModel.settingsManager.streakReminderEnabled },
+                    set: { viewModel.settingsManager.streakReminderEnabled = $0 }
+                ))
+            }
+            .animation(.default, value: viewModel.settingsManager.notificationsEnabled)
+        }
+    }
+
+    // MARK: - Appearance
+
     private var appearanceCard: some View {
         SettingsCard {
             VStack(alignment: .leading, spacing: 16) {
@@ -156,16 +283,110 @@ struct SettingsView: View {
 
     // MARK: - Danger Zone
 
+    private var notificationsCard: some View {
+        SettingsCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SettingsSectionHeader(icon: "bell.fill", title: "Notifications", color: .red)
+                
+                Toggle("Daily Reminders", isOn: Binding(
+                    get: { viewModel.settingsManager.notificationsEnabled },
+                    set: { viewModel.settingsManager.notificationsEnabled = $0 }
+                ))
+                
+                Toggle("Streak Protection", isOn: Binding(
+                    get: { viewModel.settingsManager.streakReminderEnabled },
+                    set: { viewModel.settingsManager.streakReminderEnabled = $0 }
+                ))
+            }
+        }
+    }
+    
+    private var feedbackCard: some View {
+        SettingsCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SettingsSectionHeader(icon: "hand.tap.fill", title: "Feedback", color: .purple)
+                
+                Toggle("Haptic Feedback", isOn: Binding(
+                    get: { viewModel.settingsManager.hapticFeedbackEnabled },
+                    set: { viewModel.settingsManager.hapticFeedbackEnabled = $0 }
+                ))
+                
+                Toggle("Sound Effects", isOn: Binding(
+                    get: { viewModel.settingsManager.soundEnabled },
+                    set: { viewModel.settingsManager.soundEnabled = $0 }
+                ))
+            }
+        }
+    }
+    
+    // MARK: - AI Assistant
+    
+    private var aiAssistantCard: some View {
+        SettingsCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SettingsSectionHeader(icon: "sparkles", title: "AI Assistant", color: .pink)
+                
+                Toggle("Enable AI Features", isOn: $viewModel.aiEnabled)
+                
+                if viewModel.aiEnabled {
+                    NavigationLink {
+                        AISettingsView(viewModel: viewModel)
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Active Model")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                Text(viewModel.selectedProvider.availableModels.first(where: { $0.id == viewModel.selectedModel })?.displayName ?? viewModel.selectedModel)
+                                    .font(.subheadline.weight(.medium))
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .foregroundStyle(.primary)
+                }
+            }
+            .animation(.default, value: viewModel.aiEnabled)
+        }
+    }
+
+    @State private var showResetProgressConfirmation = false
+
+    private func resetProgress() {
+        guard let deps = dependencies else { return }
+        try? deps.databaseManager.resetAllProgress()
+        deps.settingsManager.resetUserProgress()
+        deps.gamificationService.resetSession()
+        NotificationCenter.default.post(name: .didResetProgress, object: nil)
+    }
+
     private var dangerZoneCard: some View {
         SettingsCard {
-            Button(role: .destructive) {
-                showResetConfirmation = true
-            } label: {
-                HStack {
-                    Image(systemName: "trash")
-                    Text("Reset All API Keys")
+            VStack(spacing: 12) {
+                Button(role: .destructive) {
+                    showResetProgressConfirmation = true
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.counterclockwise")
+                        Text("Reset All Progress")
+                    }
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
+                
+                Divider()
+                
+                Button(role: .destructive) {
+                    showResetConfirmation = true
+                } label: {
+                    HStack {
+                        Image(systemName: "trash")
+                        Text("Reset All API Keys")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
             }
         }
     }
@@ -173,7 +394,7 @@ struct SettingsView: View {
 
 // MARK: - Helper Components
 
-private struct SettingsCard<Content: View>: View {
+struct SettingsCard<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
@@ -183,7 +404,7 @@ private struct SettingsCard<Content: View>: View {
     }
 }
 
-private struct SettingsSectionHeader: View {
+struct SettingsSectionHeader: View {
     let icon: String
     let title: String
     let color: Color
@@ -203,7 +424,7 @@ private struct SettingsSectionHeader: View {
     }
 }
 
-private struct ModelRow: View {
+struct ModelRow: View {
     let model: AIModel
     let isSelected: Bool
     let onSelect: () -> Void
@@ -245,7 +466,7 @@ private struct ModelRow: View {
     }
 }
 
-private struct SystemPromptEditor: View {
+struct SystemPromptEditor: View {
     @Bindable var viewModel: SettingsViewModel
     @FocusState private var isFocused: Bool
 

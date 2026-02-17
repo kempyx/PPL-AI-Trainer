@@ -2,33 +2,47 @@ import SwiftUI
 
 struct MockExamView: View {
     @State var viewModel: MockExamViewModel
-    @State private var selectedLeg: ExamLeg? = nil
+    @State private var showSetup = false
+    
+    private var activeLeg: ExamLeg {
+        viewModel.activeLeg
+    }
     
     var body: some View {
         NavigationStack {
             List {
-                Section("Start New Exam") {
-                    ForEach(ExamLeg.allCases) { leg in
-                        Button {
-                            selectedLeg = leg
-                        } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(leg.title)
+                Section {
+                    Button {
+                        showSetup = true
+                    } label: {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(activeLeg.emoji)
+                                    .font(.title2)
+                                Text(activeLeg.title)
                                     .font(.headline)
                                     .foregroundColor(.primary)
-                                Text(leg.subtitle)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Text("\(leg.totalQuestions) questions · \(leg.timeLimitMinutes) min")
-                                    .font(.caption2)
-                                    .foregroundColor(.blue)
                             }
-                            .padding(.vertical, 4)
+                            Text(activeLeg.subtitle)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("\(activeLeg.totalQuestions) questions · \(activeLeg.timeLimitMinutes) min")
+                                .font(.caption2)
+                                .foregroundColor(activeLeg.color)
                         }
+                        .padding(.vertical, 8)
                     }
+                } header: {
+                    Text("Start Mock Exam")
                 }
                 
                 if !viewModel.examHistory.isEmpty {
+                    Section {
+                        MockExamTrendChart(results: viewModel.examHistory)
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                    }
+                    
                     Section("History") {
                         ForEach(viewModel.examHistory, id: \.id) { result in
                             NavigationLink {
@@ -53,9 +67,24 @@ struct MockExamView: View {
                 }
             }
             .navigationTitle("Mock Exam")
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 6) {
+                        Text(activeLeg.emoji)
+                        Text(activeLeg.shortTitle)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
             .onAppear { viewModel.loadHistory() }
-            .navigationDestination(item: $selectedLeg) { leg in
-                MockExamSetupView(viewModel: viewModel, leg: leg)
+            .onChange(of: viewModel.isExamActive) {
+                if !viewModel.isExamActive {
+                    showSetup = false
+                }
+            }
+            .navigationDestination(isPresented: $showSetup) {
+                MockExamSetupView(viewModel: viewModel, leg: activeLeg)
             }
         }
     }

@@ -78,7 +78,20 @@ struct MockExamScore: Equatable {
     let correctAnswers: Int
     let percentage: Double
     let passed: Bool
-    let categoryBreakdown: [CategoryExamScore]
+    let subjectBreakdown: [SubjectExamScore]
+}
+
+struct SubjectExamScore: Codable, Equatable, Identifiable {
+    var id: String { name }
+    let name: String
+    let totalQuestions: Int
+    let correctAnswers: Int
+    var percentage: Double { totalQuestions == 0 ? 0 : Double(correctAnswers) / Double(totalQuestions) * 100 }
+    var passed: Bool { percentage >= 75.0 }
+    
+    enum CodingKeys: String, CodingKey {
+        case name, totalQuestions, correctAnswers
+    }
 }
 
 // MARK: - PresentedQuestion Factory

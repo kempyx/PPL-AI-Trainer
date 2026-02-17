@@ -11,6 +11,11 @@ struct PPLAITrainerApp: App {
             let keychainStore = KeychainStore()
             let settingsManager = SettingsManager()
             let networkMonitor = NetworkMonitor()
+            
+            let gamificationService = GamificationService(databaseManager: databaseManager, settingsManager: settingsManager)
+            let hapticService = HapticService(settingsManager: settingsManager)
+            let soundService = SoundService(settingsManager: settingsManager)
+            let notificationService = NotificationService(settingsManager: settingsManager)
 
             self.deps = Dependencies(
                 databaseManager: databaseManager,
@@ -19,7 +24,11 @@ struct PPLAITrainerApp: App {
                 keychainStore: keychainStore,
                 settingsManager: settingsManager,
                 networkMonitor: networkMonitor,
-                aiService: AIService(keychainStore: keychainStore, settingsManager: settingsManager, networkMonitor: networkMonitor)
+                aiService: AIService(keychainStore: keychainStore, settingsManager: settingsManager, networkMonitor: networkMonitor),
+                gamificationService: gamificationService,
+                hapticService: hapticService,
+                soundService: soundService,
+                notificationService: notificationService
             )
             self.initError = nil
         } catch {
@@ -31,12 +40,52 @@ struct PPLAITrainerApp: App {
     var body: some Scene {
         WindowGroup {
             if let deps = deps {
-                ContentView(deps: deps)
+                RootView(deps: deps)
             } else {
                 DatabaseErrorView(error: initError ?? "Unknown error")
             }
         }
     }
+}
+
+private struct RootView: View {
+    let deps: Dependencies
+    @State private var hasCompletedOnboarding: Bool
+    @State private var showSplash = true
+    
+    init(deps: Dependencies) {
+        self.deps = deps
+        self._hasCompletedOnboarding = State(initialValue: deps.settingsManager.hasCompletedOnboarding)
+    }
+    
+    var body: some View {
+        Group {
+            if showSplash {
+                SplashScreenView {
+                    showSplash = false
+                }
+            } else if hasCompletedOnboarding {
+                ContentView(deps: deps)
+                    .onReceive(NotificationCenter.default.publisher(for: .didResetProgress)) { _ in
+                        hasCompletedOnboarding = false
+                    }
+            } else {
+                OnboardingView(viewModel: OnboardingViewModel(
+                    databaseManager: deps.databaseManager,
+                    settingsManager: deps.settingsManager,
+                    notificationService: deps.notificationService
+                )) {
+                    hasCompletedOnboarding = true
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: showSplash)
+    }
+}
+
+extension Notification.Name {
+    static let didResetProgress = Notification.Name("didResetProgress")
+    static let settingsDidChange = Notification.Name("settingsDidChange")
 }
 
 private struct DatabaseErrorView: View {

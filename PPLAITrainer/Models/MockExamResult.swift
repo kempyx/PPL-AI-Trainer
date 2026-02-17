@@ -17,6 +17,7 @@ struct MockExamResult: Codable, FetchableRecord, MutablePersistableRecord {
     var percentage: Double
     var passed: Bool
     var categoryBreakdown: Data
+    var leg: Int
     
     static let databaseTableName = "mock_exam_results"
     

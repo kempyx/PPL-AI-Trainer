@@ -8,8 +8,10 @@ private let logger = Logger(subsystem: "com.pplaitrainer", category: "QuizViewMo
 final class QuizViewModel {
     private let databaseManager: DatabaseManaging
     private let srsEngine: SRSEngine
-    private let aiService: AIServiceProtocol
     let settingsManager: SettingsManager
+    let gamificationService: GamificationService
+    private let hapticService: HapticService
+    private let soundService: SoundService
     
     var questions: [PresentedQuestion] = []
     var currentIndex: Int = 0
@@ -19,16 +21,14 @@ final class QuizViewModel {
     var correctCount: Int = 0
     
     var aiMnemonic: String? = nil
-    var isLoadingAI: Bool = false
-    var aiError: AIServiceError? = nil
-    var showConfirmation: Bool = false
-    var pendingAIRequest: (() -> Void)? = nil
-    var showAISheet: Bool = false
     
-    // Chat state
-    var chatMessages: [ChatMessage] = []
-    var displayedAIText: String = ""
-    private var typewriterTask: Task<Void, Never>?
+    // Animation state
+    var shakeIncorrect: Int = 0
+    var showCorrectFlash: Bool = false
+    var showIncorrectFlash: Bool = false
+    
+    // AI
+    var aiConversation: AIConversationViewModel?
     
     var currentQuestion: PresentedQuestion? {
         questions.indices.contains(currentIndex) ? questions[currentIndex] : nil
@@ -42,17 +42,34 @@ final class QuizViewModel {
         questions.count - currentIndex
     }
     
-    init(databaseManager: DatabaseManaging, srsEngine: SRSEngine, aiService: AIServiceProtocol, settingsManager: SettingsManager) {
+    init(databaseManager: DatabaseManaging, srsEngine: SRSEngine, aiService: AIServiceProtocol, settingsManager: SettingsManager, gamificationService: GamificationService, hapticService: HapticService, soundService: SoundService) {
         self.databaseManager = databaseManager
         self.srsEngine = srsEngine
-        self.aiService = aiService
         self.settingsManager = settingsManager
+        self.gamificationService = gamificationService
+        self.hapticService = hapticService
+        self.soundService = soundService
+        self.aiConversation = AIConversationViewModel(
+            aiService: aiService,
+            settingsManager: settingsManager,
+            contextProvider: { [weak self] in self?.questionContextString() }
+        )
     }
     
     // MARK: - Question Loading
     
     func loadQuestions(categoryId: Int64?, parentCategoryId: Int64?, wrongAnswersOnly: Bool, srsDueOnly: Bool) {
         Task { await loadQuestionsAsync(categoryId: categoryId, parentCategoryId: parentCategoryId, wrongAnswersOnly: wrongAnswersOnly, srsDueOnly: srsDueOnly) }
+    }
+    
+    func loadQuestions(from rawQuestions: [Question]) {
+        Task { @MainActor in
+            do {
+                questions = try rawQuestions.map { try createPresentedQuestion(from: $0) }
+            } catch {
+                questions = []
+            }
+        }
     }
     
     @MainActor
@@ -91,13 +108,58 @@ final class QuizViewModel {
         guard let selectedAnswer = selectedAnswer, let current = currentQuestion else { return }
         hasSubmitted = true
         let isCorrect = selectedAnswer == current.correctAnswerIndex
-        if isCorrect { correctCount += 1 }
+        if isCorrect { 
+            correctCount += 1
+            showCorrectFlash = true
+        } else {
+            shakeIncorrect += 1
+            showIncorrectFlash = true
+        }
         questionsAnswered += 1
         Task {
             await recordAnswer(questionId: current.question.id, chosenAnswer: current.shuffledAnswers[selectedAnswer], isCorrect: isCorrect)
             await updateSRSCard(questionId: current.question.id, correct: isCorrect)
             await recordStudyDay(correct: isCorrect)
             await loadStoredMnemonic(questionId: current.question.id)
+            await awardXPAndCheckAchievements(questionId: current.question.id, correct: isCorrect)
+        }
+    }
+    
+    @MainActor private func awardXPAndCheckAchievements(questionId: Int64, correct: Bool) async {
+        do {
+            // Award XP
+            _ = try gamificationService.awardXP(for: correct, isSRSCard: false)
+            
+            // Haptics
+            if correct {
+                hapticService.correctAnswer()
+            } else {
+                hapticService.incorrectAnswer()
+            }
+            
+            // Streak milestone haptics
+            let streak = gamificationService.consecutiveCorrectInSession
+            if [3, 5, 10].contains(streak) {
+                hapticService.streakMilestone(streak)
+            }
+            
+            // Check achievements
+            try gamificationService.checkAchievements(context: AchievementContext(
+                lastAnsweredQuestionId: questionId,
+                lastAnswerCorrect: correct
+            ))
+            
+            // Level up feedback
+            if gamificationService.didLevelUp {
+                hapticService.levelUp()
+            }
+            
+            // Badge unlock feedback
+            for _ in gamificationService.recentlyUnlockedAchievements {
+                hapticService.badgeUnlock()
+            }
+        } catch {
+            // Silently fail gamification
         }
     }
     
@@ -124,15 +186,24 @@ final class QuizViewModel {
     }
     
     func nextQuestion() {
-        typewriterTask?.cancel()
         currentIndex += 1
         selectedAnswer = nil
         hasSubmitted = false
         aiMnemonic = nil
-        aiError = nil
-        chatMessages = []
-        displayedAIText = ""
-        showAISheet = false
+        showCorrectFlash = false
+        showIncorrectFlash = false
+        aiConversation?.chatMessages = []
+    }
+    
+    func previousQuestion() {
+        guard currentIndex > 0 else { return }
+        currentIndex -= 1
+        selectedAnswer = nil
+        hasSubmitted = false
+        aiMnemonic = nil
+        showCorrectFlash = false
+        showIncorrectFlash = false
+        aiConversation?.chatMessages = []
     }
     
     // MARK: - AI Chat
@@ -146,104 +217,12 @@ final class QuizViewModel {
         Choices:
         \(current.shuffledAnswers.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: "\n"))
         
-        Student's answer: \(current.shuffledAnswers[sel])
+        Your answer: \(current.shuffledAnswers[sel])
         Correct answer: \(current.shuffledAnswers[current.correctAnswerIndex])
         """
         if let explanation = current.question.explanation, !explanation.isEmpty {
-            ctx += "\n\nOfficial explanation from the study material:\n\(explanation)"
+            ctx += "\n\nOfficial explanation:\n\(explanation)"
         }
         return ctx
-    }
-    
-    /// Quick action buttons — seed the chat with a pre-built user message
-    func requestExplanation() {
-        sendChatMessage("Explain why the correct answer is right and why my answer was wrong.")
-    }
-    
-    func requestMnemonic() {
-        sendChatMessage("Give me a memorable mnemonic to help me remember this concept.")
-    }
-    
-    /// Send a free-form follow-up message
-    func sendChatMessage(_ text: String) {
-        guard settingsManager.aiEnabled else { return }
-        
-        if settingsManager.confirmBeforeSending && chatMessages.isEmpty {
-            pendingAIRequest = { [weak self] in self?.executeChatSend(text) }
-            showConfirmation = true
-        } else {
-            executeChatSend(text)
-        }
-    }
-    
-    func confirmAIRequest() {
-        showConfirmation = false
-        pendingAIRequest?()
-        pendingAIRequest = nil
-    }
-    
-    func cancelAIRequest() {
-        showConfirmation = false
-        pendingAIRequest = nil
-    }
-    
-    private func executeChatSend(_ text: String) {
-        // Seed system + context on first message
-        if chatMessages.isEmpty {
-            chatMessages.append(ChatMessage(role: .system, content: settingsManager.systemPrompt))
-            if let ctx = questionContextString() {
-                chatMessages.append(ChatMessage(role: .user, content: ctx))
-                chatMessages.append(ChatMessage(role: .assistant, content: "I can see the question and your answer. How can I help?"))
-            }
-        }
-        
-        chatMessages.append(ChatMessage(role: .user, content: text))
-        
-        logger.info("Chat send: \(text.prefix(60))...")
-        
-        Task { await performChatRequest() }
-    }
-    
-    @MainActor
-    private func performChatRequest() async {
-        isLoadingAI = true
-        aiError = nil
-        displayedAIText = ""
-        
-        do {
-            let response = try await aiService.sendChat(messages: chatMessages)
-            chatMessages.append(ChatMessage(role: .assistant, content: response))
-            isLoadingAI = false
-            animateTypewriter(response)
-            
-            // Save mnemonic if it looks like one was requested
-            if let current = currentQuestion,
-               chatMessages.last(where: { $0.role == .user })?.content.lowercased().contains("mnemonic") == true {
-                aiMnemonic = response
-                let mnemonic = Mnemonic(questionId: current.question.id, text: response, createdAt: Date())
-                try? databaseManager.saveMnemonic(mnemonic)
-            }
-        } catch let error as AIServiceError {
-            logger.error("Chat error: \(String(describing: error))")
-            aiError = error
-            isLoadingAI = false
-        } catch {
-            logger.error("Chat error: \(error.localizedDescription)")
-            aiError = .providerError("Unknown error")
-            isLoadingAI = false
-        }
-    }
-    
-    @MainActor
-    private func animateTypewriter(_ text: String) {
-        typewriterTask?.cancel()
-        displayedAIText = ""
-        typewriterTask = Task {
-            for char in text {
-                guard !Task.isCancelled else { return }
-                displayedAIText.append(char)
-                try? await Task.sleep(for: .milliseconds(15))
-            }
-        }
     }
 }

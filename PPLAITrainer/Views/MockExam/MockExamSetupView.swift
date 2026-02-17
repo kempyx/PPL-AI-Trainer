@@ -17,30 +17,35 @@ struct MockExamSetupView: View {
                 
                 Divider()
                 
-                HStack {
-                    Text("Questions:")
-                    Spacer()
-                    Text("\(leg.totalQuestions)")
-                        .bold()
+                ForEach(leg.subjectQuotas, id: \.name) { subject in
+                    HStack {
+                        Text(subject.name)
+                        Spacer()
+                        Text("\(subject.questionCount) q · \(subject.timeMinutes) min")
+                            .foregroundColor(.secondary)
+                    }
+                    .font(.subheadline)
                 }
                 
+                Divider()
+                
                 HStack {
-                    Text("Time Limit:")
+                    Text("Total:")
                     Spacer()
-                    Text("\(leg.timeLimitMinutes) minutes")
+                    Text("\(leg.totalQuestions) questions · \(leg.timeLimitMinutes) min")
                         .bold()
                 }
                 
                 HStack {
                     Text("Pass Mark:")
                     Spacer()
-                    Text("75%")
+                    Text("75% (15/20 per subject)")
                         .bold()
                 }
             }
             .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(8)
+            .background(.regularMaterial)
+            .cornerRadius(14)
             
             Button("Start Exam") {
                 viewModel.startExam(leg: leg)

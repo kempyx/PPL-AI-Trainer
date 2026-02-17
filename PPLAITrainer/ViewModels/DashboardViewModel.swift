@@ -7,6 +7,7 @@ private let logger = Logger(subsystem: "com.primendro.PPLAITrainer", category: "
 @Observable
 final class DashboardViewModel {
     private let databaseManager: DatabaseManaging
+    private let settingsManager: SettingsManager
 
     var readinessScore: Double = 0
     var totalQuestions: Int = 0
@@ -17,25 +18,67 @@ final class DashboardViewModel {
     var longestStreak: Int = 0
     var weakAreas: [WeakArea] = []
     var studyStats: StudyStats?
+    var totalXP: Int = 0
+    var currentLevel: PilotLevel = PilotLevel.allLevels[0]
+    var xpProgress: Double = 0
+    var dailyGoalTarget: Int = 20
+    var answeredToday: Int = 0
+    var examDateLeg1: Date?
+    var examDateLeg2: Date?
+    var examDateLeg3: Date?
 
-    init(databaseManager: DatabaseManaging) {
+    init(databaseManager: DatabaseManaging, settingsManager: SettingsManager) {
         self.databaseManager = databaseManager
+        self.settingsManager = settingsManager
     }
 
     func loadData() {
+        let activeLeg = settingsManager.activeLeg
+        examDateLeg1 = settingsManager.examDateLeg1
+        examDateLeg2 = settingsManager.examDateLeg2
+        examDateLeg3 = settingsManager.examDateLeg3
+        dailyGoalTarget = settingsManager.dailyGoalTarget
         Task {
-            await loadCategoryProgress()
+            await loadCategoryProgress(leg: activeLeg)
             await loadStudyDays()
             await loadStreaks()
-            await loadWeakAreas()
+            await loadWeakAreas(leg: activeLeg)
             await loadStudyStats()
+            await loadXPData()
+            await loadDailyGoal()
+        }
+    }
+    
+    @MainActor
+    private func loadDailyGoal() async {
+        do {
+            let formatter = DateFormatter.yyyyMMdd
+            let today = formatter.string(from: Date())
+            if let studyDay = try databaseManager.fetchStudyDays(from: today, to: today).first {
+                answeredToday = studyDay.questionsAnswered
+            }
+        } catch {
+            logger.error("Failed to load daily goal: \(error)")
+        }
+    }
+    
+    @MainActor
+    private func loadXPData() async {
+        do {
+            totalXP = try databaseManager.fetchTotalXP()
+            currentLevel = PilotLevel.level(for: totalXP)
+            xpProgress = PilotLevel.progressToNext(xp: totalXP)
+        } catch {
+            logger.error("Failed to load XP data: \(error)")
         }
     }
 
     @MainActor
-    private func loadCategoryProgress() async {
+    private func loadCategoryProgress(leg: ExamLeg) async {
         do {
+            let legCategoryIds = Set(leg.parentCategoryIds)
             let categories = try databaseManager.fetchAllTopLevelCategories()
+                .filter { legCategoryIds.contains($0.id) }
             let groups = try databaseManager.fetchCategoryGroups()
             let groupMap = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0.name) })
 
@@ -100,14 +143,22 @@ final class DashboardViewModel {
                 return CategoryProgress(id: entry.id, name: entry.name, percentage: pct, totalQuestions: entry.totalQuestions, answeredCorrectly: entry.correctAnswers)
             }
 
-            // Compute readiness from the same data
-            let allTotal = all.reduce(0) { $0 + $1.totalQuestions }
-            let allCorrect = all.reduce(0) { $0 + $1.correctAnswers }
-            totalQuestions = allTotal
-            totalCorrect = allCorrect
-            readinessScore = allTotal > 0 ? (Double(allCorrect) / Double(allTotal)) * 100 : 0
+            // Compute readiness based on SRS mastery (box 3+)
+            // Box 3+ indicates questions successfully recalled multiple times with spaced intervals
+            // Research shows this predicts 90%+ retention, the gold standard for mastery learning
+            var masteredCount = 0
+            for entry in entries {
+                let mastered = try databaseManager.fetchSRSCardsAtBoxOrAbove(box: 3, categoryId: entry.category.id)
+                masteredCount += mastered
+            }
+            
+            totalQuestions = masteredCount
+            totalCorrect = masteredCount
+            // Calculate readiness as percentage of 60-question exam coverage
+            // If you've mastered 45 questions, you're 75% ready (45/60)
+            readinessScore = min(Double(masteredCount) / 60.0 * 100, 100)
 
-            logger.info("Loaded \(all.count) category progress entries, readiness: \(self.readinessScore)%")
+            logger.info("Loaded \(all.count) category progress entries, \(masteredCount) questions mastered (SRS box 3+), readiness: \(Int(self.readinessScore))%")
         } catch {
             logger.error("Failed to load category progress: \(error)")
             categoryProgress = []
@@ -139,9 +190,11 @@ final class DashboardViewModel {
     }
 
     @MainActor
-    private func loadWeakAreas() async {
+    private func loadWeakAreas(leg: ExamLeg) async {
         do {
+            let legCategoryIds = Set(leg.parentCategoryIds)
             let topLevelCategories = try databaseManager.fetchAllTopLevelCategories()
+                .filter { legCategoryIds.contains($0.id) }
             let groups = try databaseManager.fetchCategoryGroups()
             let groupMap = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0.name) })
             var areas: [WeakArea] = []

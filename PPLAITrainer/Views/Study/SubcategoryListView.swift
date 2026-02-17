@@ -5,6 +5,9 @@ struct SubcategoryListView: View {
     @Environment(\.dependencies) private var deps
     let parentId: Int64
     let parentName: String
+    
+    @State private var showQuizPicker = false
+    @State private var pendingQuizCount: Int?
 
     var body: some View {
         ScrollView {
@@ -21,6 +24,9 @@ struct SubcategoryListView: View {
                         if let deps = deps {
                             NavigationLink {
                                 QuizSessionView(viewModel: makeQuizVM(deps, categoryId: item.category.id))
+                                    .onAppear {
+                                        deps.settingsManager.setLastStudiedSubject(id: parentId, name: parentName)
+                                    }
                             } label: {
                                 SubcategoryRow(item: item)
                             }
@@ -38,40 +44,92 @@ struct SubcategoryListView: View {
         .onAppear {
             viewModel.loadSubcategories(parentId: parentId)
         }
+        .sheet(isPresented: $showQuizPicker) {
+            if deps != nil {
+                QuizPickerSheet(
+                    subjectName: parentName,
+                    totalQuestions: totalQuestionCount
+                ) { count in
+                    pendingQuizCount = count
+                }
+            }
+        }
+        .navigationDestination(item: $pendingQuizCount) { count in
+            if let deps = deps {
+                QuizSessionView(viewModel: makeQuizVM(deps, parentCategoryId: parentId, limit: count))
+                    .onAppear {
+                        deps.settingsManager.setLastStudiedSubject(id: parentId, name: parentName)
+                    }
+            }
+        }
     }
 
     private func studyAllButton(_ deps: Dependencies) -> some View {
-        NavigationLink {
-            QuizSessionView(viewModel: makeQuizVM(deps, parentCategoryId: parentId))
-        } label: {
-            HStack {
-                Image(systemName: "play.fill")
-                    .font(.subheadline)
-                Text("Study All")
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                Text("\(totalQuestionCount) questions")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(.white.opacity(0.8))
+        VStack(spacing: 8) {
+            Button {
+                showQuizPicker = true
+            } label: {
+                HStack {
+                    Image(systemName: "play.fill")
+                        .font(.subheadline)
+                    Text("Start Quiz")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Text("\(totalQuestionCount) questions")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.8))
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.white.opacity(0.8))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            .foregroundColor(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .buttonStyle(.plain)
+            
+            NavigationLink {
+                FlashcardView(sessionType: .quickReview)
+            } label: {
+                HStack {
+                    Image(systemName: "rectangle.portrait.on.rectangle.portrait")
+                        .font(.subheadline)
+                    Text("Flashcards")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
     }
 
     private var totalQuestionCount: Int {
         viewModel.subcategories.reduce(0) { $0 + $1.stats.totalQuestions }
     }
 
-    private func makeQuizVM(_ deps: Dependencies, categoryId: Int64? = nil, parentCategoryId: Int64? = nil) -> QuizViewModel {
+    private func makeQuizVM(_ deps: Dependencies, categoryId: Int64? = nil, parentCategoryId: Int64? = nil, limit: Int? = nil) -> QuizViewModel {
         let vm = deps.makeQuizViewModel()
-        vm.loadQuestions(categoryId: categoryId, parentCategoryId: parentCategoryId, wrongAnswersOnly: false, srsDueOnly: false)
+        if let limit = limit, let parentCategoryId = parentCategoryId {
+            // Load limited questions from parent category
+            Task { @MainActor in
+                do {
+                    let allQuestions = try deps.databaseManager.fetchQuestions(parentCategoryId: parentCategoryId, excludeMockOnly: true)
+                    let limitedQuestions = Array(allQuestions.shuffled().prefix(limit))
+                    vm.loadQuestions(from: limitedQuestions)
+                } catch {
+                    vm.loadQuestions(categoryId: categoryId, parentCategoryId: parentCategoryId, wrongAnswersOnly: false, srsDueOnly: false)
+                }
+            }
+        } else {
+            vm.loadQuestions(categoryId: categoryId, parentCategoryId: parentCategoryId, wrongAnswersOnly: false, srsDueOnly: false)
+        }
         return vm
     }
 }

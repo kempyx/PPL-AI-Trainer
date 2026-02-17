@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import os
 
 private let logger = Logger(subsystem: "com.pplaitrainer", category: "MockExamEngine")
@@ -18,50 +19,82 @@ enum ExamLeg: Int, CaseIterable, Identifiable, Hashable {
         }
     }
     
-    var subtitle: String {
+    var shortTitle: String {
         switch self {
-        case .technicalLegal: return "AGK, Instrumentation, Principles of Flight, Air Law"
-        case .humanEnvironment: return "Meteorology, Human Performance, Communications"
-        case .planningNavigation: return "Navigation, Flight Planning, Performance, Ops"
+        case .technicalLegal: return "Leg 1"
+        case .humanEnvironment: return "Leg 2"
+        case .planningNavigation: return "Leg 3"
         }
     }
     
-    /// Parent category IDs for each leg, with question quotas per category
-    var categoryQuotas: [(parentCategoryId: Int64, questionCount: Int)] {
+    var emoji: String {
+        switch self {
+        case .technicalLegal: return "✈️"
+        case .humanEnvironment: return "🧠"
+        case .planningNavigation: return "🗺️"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .technicalLegal: return .blue
+        case .humanEnvironment: return .teal
+        case .planningNavigation: return .orange
+        }
+    }
+    
+    var subtitle: String {
+        switch self {
+        case .technicalLegal: return "AGK, Principles of Flight, Air Law"
+        case .humanEnvironment: return "Meteorology, Human Performance, Communications"
+        case .planningNavigation: return "Navigation, Flight Performance & Planning, Ops"
+        }
+    }
+    
+    /// Subjects per leg matching PEXO exam structure: 20 questions per subject, 60 per leg
+    /// Each subject may span multiple DB parent categories
+    var subjectQuotas: [(name: String, parentCategoryIds: [Int64], questionCount: Int, timeMinutes: Int)] {
         switch self {
         case .technicalLegal:
             return [
-                (560, 12), // AGK + Systems
-                (528, 8),  // Instrumentation
-                (555, 12), // Principles of Flight
-                (551, 12)  // Air Law
+                ("Aircraft General Knowledge", [560, 528], 20, 35),
+                ("Principles of Flight", [555], 20, 45),
+                ("Air Law", [551], 20, 45),
             ]
         case .humanEnvironment:
             return [
-                (553, 16), // Meteorology
-                (552, 12), // Human Performance
-                (554, 12)  // Communications
+                ("Meteorology", [553], 20, 45),
+                ("Human Performance", [552], 20, 30),
+                ("Communications", [554], 20, 30),
             ]
         case .planningNavigation:
             return [
-                (501, 12), // General Navigation
-                (500, 8),  // Radio Navigation
-                (557, 6),  // Mass and Balance
-                (558, 6),  // Performance
-                (559, 6),  // Flight Planning
-                (556, 6)   // Operational Procedures
+                ("Navigation", [501, 500], 20, 65),
+                ("Flight Performance & Planning", [557, 558, 559], 20, 95),
+                ("Operational Procedures", [556], 20, 30),
             ]
         }
     }
     
-    var totalQuestions: Int {
-        categoryQuotas.reduce(0) { $0 + $1.questionCount }
+    /// Flattened quotas for backward compatibility with exam generation
+    var categoryQuotas: [(parentCategoryId: Int64, questionCount: Int)] {
+        subjectQuotas.flatMap { subject in
+            let perCategory = subject.questionCount / subject.parentCategoryIds.count
+            let remainder = subject.questionCount % subject.parentCategoryIds.count
+            return subject.parentCategoryIds.enumerated().map { i, catId in
+                (catId, perCategory + (i < remainder ? 1 : 0))
+            }
+        }
+    }
+    
+    var totalQuestions: Int { 60 }
+    
+    var parentCategoryIds: [Int64] {
+        subjectQuotas.flatMap(\.parentCategoryIds)
     }
     
     var timeLimitMinutes: Int {
-        // 75 seconds per question, rounded to nearest 5 min
-        let raw = Double(totalQuestions * 75) / 60.0
-        return Int((raw / 5.0).rounded(.up)) * 5
+        subjectQuotas.reduce(0) { $0 + $1.timeMinutes }
     }
 }
 
@@ -102,33 +135,41 @@ final class MockExamEngine {
         TimeInterval(leg.timeLimitMinutes * 60)
     }
     
-    func scoreExam(questions: [Question], answers: [Int64: String]) throws -> MockExamScore {
+    func scoreExam(questions: [Question], answers: [Int64: String], leg: ExamLeg) throws -> MockExamScore {
+        // Build lookup: parentCategoryId -> subject name
+        var categoryToSubject: [Int64: String] = [:]
+        for subject in leg.subjectQuotas {
+            for catId in subject.parentCategoryIds {
+                categoryToSubject[catId] = subject.name
+                // Also map subcategories
+                let subs = try databaseManager.fetchSubcategories(parentId: catId)
+                for sub in subs {
+                    categoryToSubject[sub.id] = subject.name
+                }
+            }
+        }
+        
+        var subjectStats: [String: (total: Int, correct: Int)] = [:]
         var correctCount = 0
-        var categoryBreakdown: [Int64: (name: String, total: Int, correct: Int)] = [:]
         
         for question in questions {
             let isCorrect = answers[question.id] == question.correct
             if isCorrect { correctCount += 1 }
             
-            let categoryId = question.category
-            let categoryName = (try? databaseManager.fetchCategoryStats(categoryId: categoryId))?.categoryName ?? "Unknown"
-            
-            if var stats = categoryBreakdown[categoryId] {
-                stats.total += 1
-                if isCorrect { stats.correct += 1 }
-                categoryBreakdown[categoryId] = stats
-            } else {
-                categoryBreakdown[categoryId] = (categoryName, 1, isCorrect ? 1 : 0)
-            }
+            let subjectName = categoryToSubject[question.category] ?? "Unknown"
+            var stats = subjectStats[subjectName, default: (0, 0)]
+            stats.total += 1
+            if isCorrect { stats.correct += 1 }
+            subjectStats[subjectName] = stats
         }
         
         let percentage = questions.isEmpty ? 0.0 : Double(correctCount) / Double(questions.count) * 100
-        let passed = percentage >= 75.0
+        let breakdown = subjectStats.map {
+            SubjectExamScore(name: $0.key, totalQuestions: $0.value.total, correctAnswers: $0.value.correct)
+        }.sorted { $0.name < $1.name }
         
-        let breakdown = categoryBreakdown.map {
-            CategoryExamScore(categoryId: $0.key, categoryName: $0.value.name, totalQuestions: $0.value.total, correctAnswers: $0.value.correct)
-        }.sorted { $0.categoryName < $1.categoryName }
+        let passed = breakdown.allSatisfy(\.passed)
         
-        return MockExamScore(totalQuestions: questions.count, correctAnswers: correctCount, percentage: percentage, passed: passed, categoryBreakdown: breakdown)
+        return MockExamScore(totalQuestions: questions.count, correctAnswers: correctCount, percentage: percentage, passed: passed, subjectBreakdown: breakdown)
     }
 }

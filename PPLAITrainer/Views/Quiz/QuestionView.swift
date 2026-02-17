@@ -9,14 +9,12 @@ struct QuestionView: View {
             VStack(alignment: .leading, spacing: 20) {
                 Text(question.question.text)
                     .font(.headline)
+                    .textSelection(.enabled)
                     .padding()
 
                 ForEach(question.questionAttachments, id: \.id) { attachment in
-                    if let image = loadBundleImage(filename: attachment.filename) {
-                        image
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxHeight: 200)
+                    if let uiImage = loadBundleUIImage(filename: attachment.filename) {
+                        ZoomableImageView(uiImage: uiImage)
                     }
                 }
 
@@ -27,6 +25,7 @@ struct QuestionView: View {
                         HStack {
                             Text(question.shuffledAnswers[index])
                                 .foregroundColor(.primary)
+                                .textSelection(.enabled)
                             Spacer()
                             if selectedAnswer == index {
                                 Image(systemName: "checkmark.circle.fill")
@@ -37,18 +36,19 @@ struct QuestionView: View {
                         .background(selectedAnswer == index ? Color.blue.opacity(0.1) : Color.gray.opacity(0.1))
                         .cornerRadius(8)
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .padding()
         }
     }
 
-    private func loadBundleImage(filename: String) -> Image? {
+    private func loadBundleUIImage(filename: String) -> UIImage? {
         let nsFilename = filename as NSString
         let name = nsFilename.deletingPathExtension
         let ext = nsFilename.pathExtension
         guard let path = Bundle.main.path(forResource: name, ofType: ext),
               let uiImage = UIImage(contentsOfFile: path) else { return nil }
-        return Image(uiImage: uiImage)
+        return uiImage
     }
 }

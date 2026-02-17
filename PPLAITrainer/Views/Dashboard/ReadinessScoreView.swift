@@ -32,7 +32,7 @@ struct ReadinessScoreView: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundColor(.primary)
 
-                    Text("\(totalCorrect) of \(totalQuestions) correct")
+                    Text("\(totalQuestions) questions mastered")
                         .font(.caption)
                         .foregroundColor(.secondary)
 

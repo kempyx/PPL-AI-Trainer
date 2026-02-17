@@ -4,7 +4,7 @@ import Observation
 @Observable
 final class SettingsViewModel {
     private let keychainStore: KeychainStore
-    private let settingsManager: SettingsManager
+    private(set) var settingsManager: SettingsManager
 
     // Stored properties so @Observable can track them for SwiftUI updates
     var selectedProvider: AIProviderType {
@@ -45,6 +45,22 @@ final class SettingsViewModel {
     var systemPrompt: String {
         didSet { settingsManager.systemPrompt = systemPrompt }
     }
+    
+    var activeLeg: ExamLeg {
+        didSet { settingsManager.activeLeg = activeLeg }
+    }
+    
+    var examDateLeg1: Date? {
+        didSet { settingsManager.examDateLeg1 = examDateLeg1 }
+    }
+    
+    var examDateLeg2: Date? {
+        didSet { settingsManager.examDateLeg2 = examDateLeg2 }
+    }
+    
+    var examDateLeg3: Date? {
+        didSet { settingsManager.examDateLeg3 = examDateLeg3 }
+    }
 
     var isDefaultPrompt: Bool {
         systemPrompt == SettingsManager.defaultSystemPrompt
@@ -52,6 +68,20 @@ final class SettingsViewModel {
 
     var hasApiKey: Bool {
         !currentApiKey.isEmpty
+    }
+    
+    var suggestedLeg: ExamLeg? {
+        let dates: [(ExamLeg, Date)] = [
+            (.technicalLegal, examDateLeg1),
+            (.humanEnvironment, examDateLeg2),
+            (.planningNavigation, examDateLeg3)
+        ].compactMap { leg, date in
+            guard let date, date > Date() else { return nil }
+            return (leg, date)
+        }
+        
+        guard let nearest = dates.min(by: { $0.1 < $1.1 }) else { return nil }
+        return nearest.0 != activeLeg ? nearest.0 : nil
     }
 
     init(keychainStore: KeychainStore, settingsManager: SettingsManager) {
@@ -66,6 +96,10 @@ final class SettingsViewModel {
         self.confirmBeforeSending = settingsManager.confirmBeforeSending
         self.appearanceMode = settingsManager.appearanceMode
         self.systemPrompt = settingsManager.systemPrompt
+        self.activeLeg = settingsManager.activeLeg
+        self.examDateLeg1 = settingsManager.examDateLeg1
+        self.examDateLeg2 = settingsManager.examDateLeg2
+        self.examDateLeg3 = settingsManager.examDateLeg3
 
         loadCurrentKey()
     }
@@ -91,5 +125,11 @@ final class SettingsViewModel {
     func resetAllKeys() {
         try? keychainStore.deleteAllKeys()
         currentApiKey = ""
+    }
+    
+    func acceptSuggestedLeg() {
+        if let suggested = suggestedLeg {
+            activeLeg = suggested
+        }
     }
 }

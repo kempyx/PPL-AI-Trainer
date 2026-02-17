@@ -9,26 +9,35 @@ private let logger = Logger(subsystem: "com.pplaitrainer", category: "MockExamVi
 final class MockExamViewModel {
     private let databaseManager: DatabaseManaging
     private let mockExamEngine: MockExamEngine
+    private let settingsManager: SettingsManager
+    var gamificationService: GamificationService?
     
     var selectedLeg: ExamLeg? = nil
     var questions: [PresentedQuestion] = []
     var answers: [Int64: String] = [:]
     var currentIndex: Int = 0
+    var highestVisitedIndex: Int = 0
     var startTime: Date? = nil
     var timeRemaining: TimeInterval = 0
+    var questionTimeRemaining: TimeInterval = 75
     var isExamActive: Bool = false
     var examHistory: [MockExamResult] = []
     var currentScore: MockExamScore? = nil
     
     private var timer: AnyCancellable?
     
+    var activeLeg: ExamLeg {
+        settingsManager.activeLeg
+    }
+    
     var currentQuestion: PresentedQuestion? {
         questions.indices.contains(currentIndex) ? questions[currentIndex] : nil
     }
     
-    init(databaseManager: DatabaseManaging, mockExamEngine: MockExamEngine) {
+    init(databaseManager: DatabaseManaging, mockExamEngine: MockExamEngine, settingsManager: SettingsManager) {
         self.databaseManager = databaseManager
         self.mockExamEngine = mockExamEngine
+        self.settingsManager = settingsManager
     }
     
     func startExam(leg: ExamLeg) {
@@ -48,6 +57,8 @@ final class MockExamViewModel {
             timeRemaining = mockExamEngine.timeLimit(leg: leg)
             isExamActive = true
             currentIndex = 0
+            highestVisitedIndex = 0
+            questionTimeRemaining = 75
             answers = [:]
             currentScore = nil
             
@@ -65,6 +76,16 @@ final class MockExamViewModel {
                 guard let self else { return }
                 if self.timeRemaining > 0 {
                     self.timeRemaining -= 1
+                    if self.questionTimeRemaining > 0 {
+                        self.questionTimeRemaining -= 1
+                    } else {
+                        // Auto-advance or submit when per-question time expires
+                        if self.currentIndex < self.questions.count - 1 {
+                            self.nextQuestion()
+                        } else {
+                            self.submitExam()
+                        }
+                    }
                 } else {
                     self.submitExam()
                 }
@@ -77,11 +98,18 @@ final class MockExamViewModel {
     }
     
     func nextQuestion() {
-        if currentIndex < questions.count - 1 { currentIndex += 1 }
+        if currentIndex < questions.count - 1 {
+            currentIndex += 1
+            questionTimeRemaining = 75
+            if currentIndex > highestVisitedIndex { highestVisitedIndex = currentIndex }
+        }
     }
     
     func previousQuestion() {
-        if currentIndex > 0 { currentIndex -= 1 }
+        if currentIndex > 0 {
+            currentIndex -= 1
+            questionTimeRemaining = 75
+        }
     }
     
     func submitExam() {
@@ -108,7 +136,8 @@ final class MockExamViewModel {
     private func scoreAndSaveExam() async {
         guard let startTime else { return }
         do {
-            let score = try mockExamEngine.scoreExam(questions: questions.map(\.question), answers: answers)
+            let leg = selectedLeg ?? activeLeg
+            let score = try mockExamEngine.scoreExam(questions: questions.map(\.question), answers: answers, leg: leg)
             currentScore = score
             logger.info("Exam scored: \(score.correctAnswers)/\(score.totalQuestions) (\(Int(score.percentage))%)")
             
@@ -116,9 +145,15 @@ final class MockExamViewModel {
                 id: nil, startedAt: startTime, completedAt: Date(),
                 totalQuestions: score.totalQuestions, correctAnswers: score.correctAnswers,
                 percentage: score.percentage, passed: score.passed,
-                categoryBreakdown: try JSONEncoder().encode(score.categoryBreakdown)
+                categoryBreakdown: try JSONEncoder().encode(score.subjectBreakdown),
+                leg: leg.rawValue
             )
             try databaseManager.saveMockExamResult(result)
+            
+            if score.passed, let gamificationService {
+                try? gamificationService.awardMockExamPassXP()
+                try? gamificationService.checkAchievements(context: AchievementContext(mockExamPassed: true))
+            }
             
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd"
@@ -136,6 +171,6 @@ final class MockExamViewModel {
     
     @MainActor
     private func loadHistoryAsync() async {
-        examHistory = (try? databaseManager.fetchMockExamResults()) ?? []
+        examHistory = (try? databaseManager.fetchMockExamResults(leg: activeLeg)) ?? []
     }
 }

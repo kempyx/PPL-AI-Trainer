@@ -1,0 +1,58 @@
+import SwiftUI
+
+struct BadgeUnlockModal: View {
+    let achievement: AchievementDefinition
+    let onDismiss: () -> Void
+    
+    @State private var scale: CGFloat = 0.5
+    
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    onDismiss()
+                }
+            
+            VStack(spacing: 20) {
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient(colors: [.yellow, .orange], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 100, height: 100)
+                    
+                    Image(systemName: achievement.icon)
+                        .font(.system(size: 50))
+                        .foregroundColor(.white)
+                }
+                
+                Text("Achievement Unlocked!")
+                    .font(.title2.weight(.bold))
+                
+                Text(achievement.displayName)
+                    .font(.title3.weight(.semibold))
+                
+                Text(achievement.description)
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                
+                Button("Awesome!") {
+                    onDismiss()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.yellow)
+            }
+            .padding(30)
+            .background(.regularMaterial)
+            .cornerRadius(20)
+            .shadow(radius: 20)
+            .scaleEffect(scale)
+            .onAppear {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                    scale = 1.0
+                }
+            }
+        }
+    }
+}

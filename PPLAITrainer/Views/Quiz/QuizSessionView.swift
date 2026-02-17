@@ -18,41 +18,78 @@ struct QuizSessionView: View {
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            VStack {
+            VStack(spacing: 0) {
                 if let current = viewModel.currentQuestion {
-                    VStack {
-                        Text("Question \(viewModel.currentIndex + 1) of \(viewModel.questions.count)")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-
-                        Text("Score: \(viewModel.correctCount) / \(viewModel.questionsAnswered)")
-                            .font(.caption)
-                            .foregroundColor(.blue)
+                    // Progress Bar
+                    ProgressView(value: Double(viewModel.currentIndex + 1), total: Double(viewModel.questions.count))
+                        .tint(.blue)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                    
+                    // Stats Row
+                    HStack {
+                        Text("Question \(viewModel.currentIndex + 1)/\(viewModel.questions.count)")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.secondary)
+                        
+                        Spacer()
+                        
+                        // XP Display
+                        HStack(spacing: 4) {
+                            Image(systemName: "star.fill")
+                                .font(.caption)
+                                .foregroundColor(.yellow)
+                            Text("\(viewModel.gamificationService.sessionXP)")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(.yellow)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.yellow.opacity(0.2))
+                        .cornerRadius(8)
                     }
-                    .padding()
+                    .padding(.horizontal)
+                    .padding(.vertical, 12)
 
                     if !viewModel.hasSubmitted {
                         QuestionView(question: current, selectedAnswer: $viewModel.selectedAnswer)
-
-                        Button("Submit") {
-                            viewModel.submitAnswer()
-                        }
-                        .disabled(viewModel.selectedAnswer == nil)
-                        .padding()
+                            .id("question-\(viewModel.currentIndex)")
                     } else {
                         ResultView(viewModel: viewModel, question: current)
+                            .id("result-\(viewModel.currentIndex)")
+                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     }
+                    
+                    Spacer()
                 } else if viewModel.isQuizComplete {
                     quizCompleteView
                 } else {
-                    Text("No questions available")
-                        .foregroundColor(.gray)
+                    ContentUnavailableView("No Questions", systemImage: "questionmark.circle", description: Text("Answer some questions first to unlock this session type"))
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                if viewModel.currentQuestion != nil, !viewModel.hasSubmitted {
+                    Button {
+                        viewModel.submitAnswer()
+                    } label: {
+                        Text("Submit")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(viewModel.selectedAnswer == nil ? Color.gray : Color.blue)
+                            .cornerRadius(12)
+                    }
+                    .disabled(viewModel.selectedAnswer == nil)
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+                    .background(.regularMaterial)
                 }
             }
 
             if viewModel.hasSubmitted && viewModel.settingsManager.aiEnabled {
                 Button {
-                    viewModel.showAISheet = true
+                    viewModel.aiConversation?.showAISheet = true
                 } label: {
                     Image(systemName: "sparkles")
                         .font(.title2)
@@ -75,9 +112,44 @@ struct QuizSessionView: View {
             }
         }
         .navigationTitle("Quiz")
-        .sheet(isPresented: $viewModel.showAISheet) {
-            AIResponseSheet(viewModel: viewModel)
-                .presentationDetents([.medium, .large])
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    if viewModel.currentIndex > 0 {
+                        viewModel.previousQuestion()
+                    } else {
+                        dismiss()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text(viewModel.currentIndex > 0 ? "Previous" : "Back")
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { viewModel.aiConversation?.showAISheet ?? false },
+            set: { if !$0 { viewModel.aiConversation?.showAISheet = false } }
+        )) {
+            if let aiVM = viewModel.aiConversation {
+                AIConversationSheet(viewModel: aiVM)
+                    .presentationDetents([.large])
+            }
+        }
+        .overlay {
+            if let achievement = viewModel.gamificationService.recentlyUnlockedAchievements.first {
+                BadgeUnlockModal(achievement: achievement) {
+                    viewModel.gamificationService.recentlyUnlockedAchievements.removeFirst()
+                }
+            }
+        }
+        .overlay {
+            if viewModel.gamificationService.didLevelUp {
+                ConfettiView()
+            }
         }
     }
 

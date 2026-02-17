@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		C9A64D022F437D01000049F6 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = C9A64D012F437D00000049F6 /* GRDB */; };
+		C9FEC0682F44987F00187BF3 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = C9FEC0672F44987F00187BF3 /* MarkdownUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C9A64D022F437D01000049F6 /* GRDB in Frameworks */,
+				C9FEC0682F44987F00187BF3 /* MarkdownUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +73,7 @@
 			name = PPLAITrainer;
 			packageProductDependencies = (
 				C9A64D012F437D00000049F6 /* GRDB */,
+				C9FEC0672F44987F00187BF3 /* MarkdownUI */,
 			);
 			productName = PPLAITrainer;
 			productReference = C9A64CEE2F437C9C000049F6 /* PPLAITrainer.app */;
@@ -102,6 +105,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				C9A64D002F437D00000049F6 /* XCRemoteSwiftPackageReference "GRDB" */,
+				C9FEC0662F44987F00187BF3 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C9A64CEF2F437C9C000049F6 /* Products */;
@@ -254,8 +258,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 6ZGL2JNM3K;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6ZGL2JNM3K;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -287,8 +291,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 6ZGL2JNM3K;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6ZGL2JNM3K;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -346,6 +350,14 @@
 				minimumVersion = 7.0.0;
 			};
 		};
+		C9FEC0662F44987F00187BF3 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -353,6 +365,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = C9A64D002F437D00000049F6 /* XCRemoteSwiftPackageReference "GRDB" */;
 			productName = GRDB;
+		};
+		C9FEC0672F44987F00187BF3 /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C9FEC0662F44987F00187BF3 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

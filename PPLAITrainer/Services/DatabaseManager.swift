@@ -47,6 +47,7 @@ protocol DatabaseManaging {
 
     func saveMockExamResult(_ result: MockExamResult) throws
     func fetchMockExamResults() throws -> [MockExamResult]
+    func fetchMockExamResults(leg: ExamLeg) throws -> [MockExamResult]
     func fetchMockExamResult(id: Int64) throws -> MockExamResult?
 
     func recordStudyActivity(date: String, questionsAnswered: Int, correctAnswers: Int) throws
@@ -54,6 +55,42 @@ protocol DatabaseManaging {
     func fetchCurrentStreak() throws -> Int
     func fetchLongestStreak() throws -> Int
     func fetchStudyStats() throws -> StudyStats
+    
+    // XP methods
+    func logXP(_ event: XPEvent) throws
+    func fetchTotalXP() throws -> Int
+    func fetchXPToday() throws -> Int
+    func fetchXPThisWeek() throws -> Int
+    
+    // Achievement methods
+    func unlockAchievement(_ achievement: Achievement) throws
+    func fetchAchievements() throws -> [Achievement]
+    func fetchUnseenAchievements() throws -> [Achievement]
+    func markAchievementSeen(_ id: String) throws
+    func isAchievementUnlocked(_ id: String) throws -> Bool
+    
+    // Bookmark methods
+    func addBookmark(questionId: Int64) throws
+    func removeBookmark(questionId: Int64) throws
+    func isBookmarked(questionId: Int64) throws -> Bool
+    func fetchBookmarkedQuestionIds() throws -> [Int64]
+    func fetchBookmarkedQuestions() throws -> [Question]
+    
+    // Note methods
+    func saveNote(_ note: Note) throws
+    func fetchNote(questionId: Int64) throws -> Note?
+    func deleteNote(questionId: Int64) throws
+    
+    // Search
+    func searchQuestions(query: String, limit: Int) throws -> [Question]
+    
+    // Gamification helpers
+    func fetchMnemonicCount() throws -> Int
+    func fetchConsecutiveCorrectStreak(limit: Int) throws -> Int
+    func fetchTimesWrong(questionId: Int64) throws -> Int
+    func fetchSRSCardsAtBoxOrAbove(box: Int, categoryId: Int64) throws -> Int
+    func fetchTotalSRSCardsForCategory(categoryId: Int64) throws -> Int
+    func resetAllProgress() throws
 }
 
 final class DatabaseManager: DatabaseManaging {
@@ -130,6 +167,35 @@ final class DatabaseManager: DatabaseManaging {
                 t.column("date", .text).primaryKey()
                 t.column("questionsAnswered", .integer).notNull()
                 t.column("correctAnswers", .integer).notNull()
+            }
+        }
+
+        migrator.registerMigration("v5-gamification") { db in
+            try db.create(table: "xp_events") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("amount", .integer).notNull()
+                t.column("source", .text).notNull()
+                t.column("timestamp", .datetime).notNull().indexed()
+            }
+            try db.create(table: "achievements") { t in
+                t.column("id", .text).primaryKey()
+                t.column("unlockedAt", .datetime).notNull()
+                t.column("seen", .boolean).notNull().defaults(to: false)
+            }
+            try db.create(table: "bookmarks") { t in
+                t.column("questionId", .integer).primaryKey()
+                t.column("createdAt", .datetime).notNull()
+            }
+            try db.create(table: "notes") { t in
+                t.column("questionId", .integer).primaryKey()
+                t.column("text", .text).notNull()
+                t.column("updatedAt", .datetime).notNull()
+            }
+        }
+        
+        migrator.registerMigration("v6-mock-exam-leg") { db in
+            try db.alter(table: "mock_exam_results") { t in
+                t.add(column: "leg", .integer).notNull().defaults(to: 1)
             }
         }
 
@@ -438,6 +504,15 @@ final class DatabaseManager: DatabaseManaging {
             try MockExamResult.order(Column("completedAt").desc).fetchAll(db)
         }
     }
+    
+    func fetchMockExamResults(leg: ExamLeg) throws -> [MockExamResult] {
+        try dbQueue.read { db in
+            try MockExamResult
+                .filter(Column("leg") == leg.rawValue)
+                .order(Column("completedAt").desc)
+                .fetchAll(db)
+        }
+    }
 
     func fetchMockExamResult(id: Int64) throws -> MockExamResult? {
         try dbQueue.read { db in
@@ -541,6 +616,197 @@ final class DatabaseManager: DatabaseManaging {
             let correctPercentage = answeredAllTime > 0 ? Double(correctAllTime) / Double(answeredAllTime) * 100 : 0
 
             return StudyStats(answeredToday: answeredToday, answeredThisWeek: answeredThisWeek, answeredAllTime: answeredAllTime, correctPercentage: correctPercentage)
+        }
+    }
+    
+    // MARK: - XP Methods
+    
+    func logXP(_ event: XPEvent) throws {
+        try dbQueue.write { db in
+            var mutableEvent = event
+            try mutableEvent.insert(db)
+        }
+    }
+    
+    func fetchTotalXP() throws -> Int {
+        try dbQueue.read { db in
+            try Int.fetchOne(db, sql: "SELECT COALESCE(SUM(amount), 0) FROM xp_events") ?? 0
+        }
+    }
+    
+    func fetchXPToday() throws -> Int {
+        try dbQueue.read { db in
+            let today = DateFormatter.yyyyMMdd.string(from: Date())
+            return try Int.fetchOne(db, sql: "SELECT COALESCE(SUM(amount), 0) FROM xp_events WHERE date(timestamp) = ?", arguments: [today]) ?? 0
+        }
+    }
+    
+    func fetchXPThisWeek() throws -> Int {
+        try dbQueue.read { db in
+            let weekAgo = DateFormatter.yyyyMMdd.string(from: Calendar.current.date(byAdding: .day, value: -7, to: Date())!)
+            return try Int.fetchOne(db, sql: "SELECT COALESCE(SUM(amount), 0) FROM xp_events WHERE date(timestamp) >= ?", arguments: [weekAgo]) ?? 0
+        }
+    }
+    
+    // MARK: - Achievement Methods
+    
+    func unlockAchievement(_ achievement: Achievement) throws {
+        try dbQueue.write { db in
+            var mutableAchievement = achievement
+            try mutableAchievement.insert(db)
+        }
+    }
+    
+    func fetchAchievements() throws -> [Achievement] {
+        try dbQueue.read { db in
+            try Achievement.fetchAll(db)
+        }
+    }
+    
+    func fetchUnseenAchievements() throws -> [Achievement] {
+        try dbQueue.read { db in
+            try Achievement.filter(Column("seen") == false).fetchAll(db)
+        }
+    }
+    
+    func markAchievementSeen(_ id: String) throws {
+        try dbQueue.write { db in
+            try db.execute(sql: "UPDATE achievements SET seen = 1 WHERE id = ?", arguments: [id])
+        }
+    }
+    
+    func isAchievementUnlocked(_ id: String) throws -> Bool {
+        try dbQueue.read { db in
+            try Achievement.fetchOne(db, key: id) != nil
+        }
+    }
+    
+    // MARK: - Bookmark Methods
+    
+    func addBookmark(questionId: Int64) throws {
+        try dbQueue.write { db in
+            var bookmark = Bookmark(questionId: questionId, createdAt: Date())
+            try bookmark.insert(db)
+        }
+    }
+    
+    func removeBookmark(questionId: Int64) throws {
+        try dbQueue.write { db in
+            try db.execute(sql: "DELETE FROM bookmarks WHERE questionId = ?", arguments: [questionId])
+        }
+    }
+    
+    func isBookmarked(questionId: Int64) throws -> Bool {
+        try dbQueue.read { db in
+            try Bookmark.fetchOne(db, key: questionId) != nil
+        }
+    }
+    
+    func fetchBookmarkedQuestionIds() throws -> [Int64] {
+        try dbQueue.read { db in
+            try Int64.fetchAll(db, sql: "SELECT questionId FROM bookmarks ORDER BY createdAt DESC")
+        }
+    }
+    
+    func fetchBookmarkedQuestions() throws -> [Question] {
+        try dbQueue.read { db in
+            try Question.fetchAll(db, sql: """
+                SELECT q.* FROM questions q
+                INNER JOIN bookmarks b ON q.id = b.questionId
+                ORDER BY b.createdAt DESC
+            """)
+        }
+    }
+    
+    // MARK: - Note Methods
+    
+    func saveNote(_ note: Note) throws {
+        try dbQueue.write { db in
+            var mutableNote = note
+            try mutableNote.insert(db)
+        }
+    }
+    
+    func fetchNote(questionId: Int64) throws -> Note? {
+        try dbQueue.read { db in
+            try Note.fetchOne(db, key: questionId)
+        }
+    }
+    
+    func deleteNote(questionId: Int64) throws {
+        try dbQueue.write { db in
+            try db.execute(sql: "DELETE FROM notes WHERE questionId = ?", arguments: [questionId])
+        }
+    }
+    
+    // MARK: - Search
+    
+    func searchQuestions(query: String, limit: Int) throws -> [Question] {
+        try dbQueue.read { db in
+            let pattern = "%\(query)%"
+            return try Question.fetchAll(db, sql: """
+                SELECT * FROM questions
+                WHERE text LIKE ? OR correct LIKE ? OR incorrect0 LIKE ? OR incorrect1 LIKE ? OR incorrect2 LIKE ?
+                LIMIT ?
+            """, arguments: [pattern, pattern, pattern, pattern, pattern, limit])
+        }
+    }
+    
+    // MARK: - Gamification Helpers
+    
+    func fetchMnemonicCount() throws -> Int {
+        try dbQueue.read { db in
+            try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM mnemonics") ?? 0
+        }
+    }
+    
+    func fetchConsecutiveCorrectStreak(limit: Int) throws -> Int {
+        try dbQueue.read { db in
+            let records = try AnswerRecord.order(Column("timestamp").desc).limit(limit).fetchAll(db)
+            var streak = 0
+            for record in records {
+                if record.isCorrect {
+                    streak += 1
+                } else {
+                    break
+                }
+            }
+            return streak
+        }
+    }
+    
+    func fetchTimesWrong(questionId: Int64) throws -> Int {
+        try dbQueue.read { db in
+            try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM answer_records WHERE questionId = ? AND isCorrect = 0", arguments: [questionId]) ?? 0
+        }
+    }
+    
+    func fetchSRSCardsAtBoxOrAbove(box: Int, categoryId: Int64) throws -> Int {
+        try dbQueue.read { db in
+            try Int.fetchOne(db, sql: """
+                SELECT COUNT(*) FROM srs_cards s
+                INNER JOIN questions q ON s.questionId = q.id
+                WHERE s.box >= ? AND q.category = ?
+            """, arguments: [box, categoryId]) ?? 0
+        }
+    }
+    
+    func fetchTotalSRSCardsForCategory(categoryId: Int64) throws -> Int {
+        try dbQueue.read { db in
+            try Int.fetchOne(db, sql: """
+                SELECT COUNT(*) FROM srs_cards s
+                INNER JOIN questions q ON s.questionId = q.id
+                WHERE q.category = ?
+            """, arguments: [categoryId]) ?? 0
+        }
+    }
+    
+    func resetAllProgress() throws {
+        try dbQueue.write { db in
+            let tables = ["answer_records", "srs_cards", "mnemonics", "mock_exam_results", "study_days", "xp_events", "achievements", "bookmarks", "notes"]
+            for table in tables {
+                try db.execute(sql: "DELETE FROM \(table)")
+            }
         }
     }
 }

@@ -3,10 +3,12 @@ import SwiftUI
 struct ContentView: View {
     let deps: Dependencies
     @State private var appearanceMode: String
+    @State private var activeLeg: ExamLeg
     
     init(deps: Dependencies) {
         self.deps = deps
         self._appearanceMode = State(initialValue: deps.settingsManager.appearanceMode)
+        self._activeLeg = State(initialValue: deps.settingsManager.activeLeg)
     }
     
     private var colorScheme: ColorScheme? {
@@ -19,7 +21,7 @@ struct ContentView: View {
     
     var body: some View {
         TabView {
-            DashboardView(viewModel: DashboardViewModel(databaseManager: deps.databaseManager))
+            DashboardView(viewModel: DashboardViewModel(databaseManager: deps.databaseManager, settingsManager: deps.settingsManager))
                 .tabItem {
                     Label("Dashboard", systemImage: "chart.bar.fill")
                 }
@@ -29,7 +31,11 @@ struct ContentView: View {
                     Label("Study", systemImage: "book.fill")
                 }
             
-            MockExamView(viewModel: MockExamViewModel(databaseManager: deps.databaseManager, mockExamEngine: deps.mockExamEngine))
+            MockExamView(viewModel: {
+                let vm = MockExamViewModel(databaseManager: deps.databaseManager, mockExamEngine: deps.mockExamEngine, settingsManager: deps.settingsManager)
+                vm.gamificationService = deps.gamificationService
+                return vm
+            }())
                 .tabItem {
                     Label("Mock Exam", systemImage: "doc.text.fill")
                 }
@@ -39,10 +45,47 @@ struct ContentView: View {
                     Label("Settings", systemImage: "gear")
                 }
         }
+        .tint(activeLeg.color)
         .preferredColorScheme(colorScheme)
         .environment(\.dependencies, deps)
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
             appearanceMode = deps.settingsManager.appearanceMode
+            activeLeg = deps.settingsManager.activeLeg
         }
+        .onReceive(NotificationCenter.default.publisher(for: .settingsDidChange)) { _ in
+            Task {
+                await rescheduleNotifications(deps: deps)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            Task {
+                await rescheduleNotifications(deps: deps)
+            }
+        }
+    }
+    
+    private func rescheduleNotifications(deps: Dependencies) async {
+        let dueCardCount = (try? deps.databaseManager.fetchDueCards(limit: nil).count) ?? 0
+        let currentStreak = (try? deps.databaseManager.fetchCurrentStreak()) ?? 0
+        let dailyGoalProgress = calculateDailyGoalProgress(deps: deps)
+        let daysUntilExam = deps.settingsManager.nearestExamDate.flatMap { Calendar.current.dateComponents([.day], from: Date(), to: $0).day }
+        
+        await deps.notificationService.rescheduleAll(
+            dueCardCount: dueCardCount,
+            currentStreak: currentStreak,
+            dailyGoalProgress: dailyGoalProgress,
+            readinessScore: 0,
+            daysUntilExam: daysUntilExam
+        )
+    }
+    
+    private func calculateDailyGoalProgress(deps: Dependencies) -> Double {
+        let today = DateFormatter.yyyyMMdd.string(from: Date())
+        guard let studyDays = try? deps.databaseManager.fetchStudyDays(from: today, to: today),
+              let todayActivity = studyDays.first else {
+            return 0
+        }
+        let target = deps.settingsManager.dailyGoalTarget
+        return min(Double(todayActivity.questionsAnswered) / Double(target), 1.0)
     }
 }

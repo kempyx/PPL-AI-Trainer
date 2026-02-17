@@ -10,22 +10,48 @@ final class SettingsManager {
         static let appearanceMode = "appearanceMode"
         static let systemPrompt = "systemPrompt"
         static let selectedModel = "selectedModel"
+        static let hasCompletedOnboarding = "hasCompletedOnboarding"
+        static let examDateLeg1 = "examDateLeg1"
+        static let examDateLeg2 = "examDateLeg2"
+        static let examDateLeg3 = "examDateLeg3"
+        static let dailyGoalTarget = "dailyGoalTarget"
+        static let notificationsEnabled = "notificationsEnabled"
+        static let reminderTime = "reminderTime"
+        static let streakReminderEnabled = "streakReminderEnabled"
+        static let hapticFeedbackEnabled = "hapticFeedbackEnabled"
+        static let soundEnabled = "soundEnabled"
+        static let activeLeg = "activeLeg"
+        static let lastStudiedSubjectId = "lastStudiedSubjectId"
+        static let lastStudiedSubjectName = "lastStudiedSubjectName"
     }
     
     static let defaultSystemPrompt = """
-    You are an experienced PPL (Private Pilot Licence) ground school instructor helping a student prepare for their EASA PPL theory exams. You have deep knowledge of all 9 PPL subjects: Air Law, Human Performance, Meteorology, Communications, Principles of Flight, Operational Procedures, Flight Performance & Planning, Aircraft General Knowledge, and Navigation.
+    You are a PPL ground school instructor helping a student prepare for EASA PPL theory exams.
     
-    When explaining answers:
-    - State which answer is correct and why, then briefly explain why the other options are wrong
-    - Reference relevant EASA regulations, rules of thumb, or real-world flying examples where helpful
-    - Use proper aviation terminology but explain jargon when first used
-    - Keep explanations to 2-3 short paragraphs maximum
-    
-    When creating mnemonics:
-    - Make them memorable, catchy, and directly tied to the concept
-    - Prefer acronyms, rhymes, or visual associations
-    - Keep to 1-2 sentences
+    Rules:
+    - Address the student directly using "you" and "your"
+    - Be concise: max 3-4 sentences per response
+    - Use full Markdown formatting:
+      • **bold** for emphasis
+      • *italic* for terms
+      • `code` for technical values
+      • - or • for bullet lists
+      • ### for section headers (if needed)
+      • > for important notes/quotes
+    - For mathematical formulas, use Unicode symbols (NOT LaTeX):
+      • Use ½ instead of \\frac{1}{2}
+      • Use ρ, α, β for Greek letters
+      • Use ² ³ for superscripts (V² not V^2)
+      • Use × ÷ ± for operators
+      • Example: "Q = ½ρV²" not "$Q = \\frac{1}{2} \\rho V^2$"
+    - State the correct answer and why in one sentence
+    - Briefly note why their answer was wrong (if applicable)
+    - Only elaborate if they ask follow-up questions
     """
+    
+    private func notifyChange() {
+        NotificationCenter.default.post(name: .settingsDidChange, object: nil)
+    }
     
     var selectedProvider: String {
         get { defaults.string(forKey: Keys.selectedProvider) ?? "openai" }
@@ -55,5 +81,130 @@ final class SettingsManager {
     var selectedModel: String? {
         get { defaults.string(forKey: Keys.selectedModel) }
         set { defaults.set(newValue, forKey: Keys.selectedModel) }
+    }
+    
+    var hasCompletedOnboarding: Bool {
+        get { defaults.bool(forKey: Keys.hasCompletedOnboarding) }
+        set { defaults.set(newValue, forKey: Keys.hasCompletedOnboarding) }
+    }
+    
+    var examDateLeg1: Date? {
+        get { defaults.object(forKey: Keys.examDateLeg1) as? Date }
+        set { 
+            defaults.set(newValue, forKey: Keys.examDateLeg1)
+            notifyChange()
+        }
+    }
+    
+    var examDateLeg2: Date? {
+        get { defaults.object(forKey: Keys.examDateLeg2) as? Date }
+        set { 
+            defaults.set(newValue, forKey: Keys.examDateLeg2)
+            notifyChange()
+        }
+    }
+    
+    var examDateLeg3: Date? {
+        get { defaults.object(forKey: Keys.examDateLeg3) as? Date }
+        set { 
+            defaults.set(newValue, forKey: Keys.examDateLeg3)
+            notifyChange()
+        }
+    }
+    
+    var nearestExamDate: Date? {
+        [examDateLeg1, examDateLeg2, examDateLeg3]
+            .compactMap { $0 }
+            .filter { $0 > Date() }
+            .min()
+    }
+    
+    var dailyGoalTarget: Int {
+        get {
+            let val = defaults.integer(forKey: Keys.dailyGoalTarget)
+            return val > 0 ? val : 20
+        }
+        set { defaults.set(newValue, forKey: Keys.dailyGoalTarget) }
+    }
+    
+    var notificationsEnabled: Bool {
+        get { defaults.bool(forKey: Keys.notificationsEnabled) }
+        set { 
+            defaults.set(newValue, forKey: Keys.notificationsEnabled)
+            notifyChange()
+        }
+    }
+    
+    var reminderTime: Date {
+        get {
+            if let date = defaults.object(forKey: Keys.reminderTime) as? Date { return date }
+            var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+            components.hour = 20
+            components.minute = 0
+            return Calendar.current.date(from: components) ?? Date()
+        }
+        set { 
+            defaults.set(newValue, forKey: Keys.reminderTime)
+            notifyChange()
+        }
+    }
+    
+    var streakReminderEnabled: Bool {
+        get { defaults.bool(forKey: Keys.streakReminderEnabled) }
+        set { 
+            defaults.set(newValue, forKey: Keys.streakReminderEnabled)
+            notifyChange()
+        }
+    }
+    
+    var hapticFeedbackEnabled: Bool {
+        get {
+            if defaults.object(forKey: Keys.hapticFeedbackEnabled) == nil { return true }
+            return defaults.bool(forKey: Keys.hapticFeedbackEnabled)
+        }
+        set { defaults.set(newValue, forKey: Keys.hapticFeedbackEnabled) }
+    }
+    
+    var soundEnabled: Bool {
+        get {
+            if defaults.object(forKey: Keys.soundEnabled) == nil { return true }
+            return defaults.bool(forKey: Keys.soundEnabled)
+        }
+        set { defaults.set(newValue, forKey: Keys.soundEnabled) }
+    }
+    
+    var activeLeg: ExamLeg {
+        get { ExamLeg(rawValue: defaults.integer(forKey: Keys.activeLeg)) ?? .technicalLegal }
+        set { defaults.set(newValue.rawValue, forKey: Keys.activeLeg) }
+    }
+    
+    var lastStudiedSubjectId: Int64? {
+        get {
+            let val = defaults.object(forKey: Keys.lastStudiedSubjectId) as? Int64
+            return val == 0 ? nil : val
+        }
+        set { defaults.set(newValue, forKey: Keys.lastStudiedSubjectId) }
+    }
+    
+    var lastStudiedSubjectName: String? {
+        get { defaults.string(forKey: Keys.lastStudiedSubjectName) }
+        set { defaults.set(newValue, forKey: Keys.lastStudiedSubjectName) }
+    }
+    
+    func setLastStudiedSubject(id: Int64, name: String) {
+        lastStudiedSubjectId = id
+        lastStudiedSubjectName = name
+    }
+    
+    func resetUserProgress() {
+        let keysToReset = [
+            Keys.hasCompletedOnboarding, Keys.examDateLeg1, Keys.examDateLeg2, Keys.examDateLeg3, Keys.dailyGoalTarget,
+            Keys.notificationsEnabled, Keys.reminderTime, Keys.streakReminderEnabled,
+            Keys.hapticFeedbackEnabled, Keys.soundEnabled, Keys.activeLeg,
+            Keys.lastStudiedSubjectId, Keys.lastStudiedSubjectName
+        ]
+        for key in keysToReset {
+            defaults.removeObject(forKey: key)
+        }
     }
 }

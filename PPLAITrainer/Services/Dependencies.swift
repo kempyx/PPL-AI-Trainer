@@ -8,9 +8,21 @@ struct Dependencies {
     let settingsManager: SettingsManager
     let networkMonitor: NetworkMonitor
     let aiService: AIServiceProtocol
+    let gamificationService: GamificationService
+    let hapticService: HapticService
+    let soundService: SoundService
+    let notificationService: NotificationService
     
     func makeQuizViewModel() -> QuizViewModel {
-        QuizViewModel(databaseManager: databaseManager, srsEngine: srsEngine, aiService: aiService, settingsManager: settingsManager)
+        QuizViewModel(
+            databaseManager: databaseManager,
+            srsEngine: srsEngine,
+            aiService: aiService,
+            settingsManager: settingsManager,
+            gamificationService: gamificationService,
+            hapticService: hapticService,
+            soundService: soundService
+        )
     }
 }
 

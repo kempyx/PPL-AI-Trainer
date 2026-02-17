@@ -4,27 +4,50 @@ struct MockExamSessionView: View {
     @State var viewModel: MockExamViewModel
     @State private var showAbandonAlert = false
     @State private var showResult = false
+    @State private var showOverview = false
     @Environment(\.dismiss) private var dismiss
+    
+    private var answeredCount: Int {
+        viewModel.questions.filter { viewModel.answers[$0.question.id] != nil }.count
+    }
     
     var body: some View {
         VStack {
-            HStack {
-                Text("Question \(viewModel.currentIndex + 1) of \(viewModel.questions.count)")
-                    .font(.caption)
+            // Header
+            VStack(spacing: 4) {
+                HStack {
+                    Text("Question \(viewModel.currentIndex + 1) of \(viewModel.questions.count)")
+                        .font(.caption)
+                    
+                    Spacer()
+                    
+                    Text(timeString(from: viewModel.timeRemaining))
+                        .font(.caption.monospacedDigit())
+                        .foregroundColor(viewModel.timeRemaining < 300 ? .red : .primary)
+                        .pulse(isActive: viewModel.timeRemaining < 60)
+                }
                 
-                Spacer()
-                
-                Text(timeString(from: viewModel.timeRemaining))
-                    .font(.caption)
-                    .foregroundColor(viewModel.timeRemaining < 300 ? .red : .primary)
+                HStack {
+                    Text("\(answeredCount) answered · \(viewModel.questions.count - answeredCount) remaining")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    
+                    Spacer()
+                    
+                    Text("\(Int(viewModel.questionTimeRemaining))s")
+                        .font(.caption.monospacedDigit())
+                        .foregroundColor(viewModel.questionTimeRemaining <= 10 ? .red : .orange)
+                }
             }
-            .padding()
+            .padding(.horizontal)
+            .padding(.top, 8)
             
             if let current = viewModel.currentQuestion {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         Text(current.question.text)
                             .font(.headline)
+                            .textSelection(.enabled)
                             .padding()
                         
                         ForEach(0..<current.shuffledAnswers.count, id: \.self) { index in
@@ -34,6 +57,7 @@ struct MockExamSessionView: View {
                                 HStack {
                                     Text(current.shuffledAnswers[index])
                                         .foregroundColor(.primary)
+                                        .textSelection(.enabled)
                                     Spacer()
                                     if viewModel.answers[current.question.id] == current.shuffledAnswers[index] {
                                         Image(systemName: "checkmark.circle.fill")
@@ -44,14 +68,22 @@ struct MockExamSessionView: View {
                                 .background(viewModel.answers[current.question.id] == current.shuffledAnswers[index] ? Color.blue.opacity(0.1) : Color.gray.opacity(0.1))
                                 .cornerRadius(8)
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding()
                 }
                 
                 HStack {
-                    Button("Previous") {
+                    Button {
                         viewModel.previousQuestion()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.title2)
+                            .frame(width: 44, height: 44)
+                            .background(viewModel.currentIndex == 0 ? Color.gray.opacity(0.3) : Color.accentColor)
+                            .foregroundStyle(.white)
+                            .clipShape(Circle())
                     }
                     .disabled(viewModel.currentIndex == 0)
                     
@@ -61,9 +93,17 @@ struct MockExamSessionView: View {
                         Button("Submit") {
                             viewModel.submitExam()
                         }
+                        .buttonStyle(.borderedProminent)
                     } else {
-                        Button("Next") {
+                        Button {
                             viewModel.nextQuestion()
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.title2)
+                                .frame(width: 44, height: 44)
+                                .background(Color.accentColor)
+                                .foregroundStyle(.white)
+                                .clipShape(Circle())
                         }
                     }
                 }
@@ -73,11 +113,22 @@ struct MockExamSessionView: View {
         .navigationTitle("Mock Exam")
         .navigationBarBackButtonHidden(true)
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    showOverview = true
+                } label: {
+                    Image(systemName: "square.grid.3x3")
+                }
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Abandon") {
                     showAbandonAlert = true
                 }
             }
+        }
+        .sheet(isPresented: $showOverview) {
+            QuestionOverviewSheet(viewModel: viewModel, isPresented: $showOverview)
+                .presentationDetents([.medium, .large])
         }
         .alert("Abandon Exam?", isPresented: $showAbandonAlert) {
             Button("Save & Exit") {
@@ -93,14 +144,13 @@ struct MockExamSessionView: View {
             Text("Do you want to save your progress or discard this attempt?")
         }
         .onChange(of: viewModel.currentScore) { _, newScore in
-            if newScore != nil {
-                showResult = true
-            }
+            if newScore != nil { showResult = true }
         }
         .navigationDestination(isPresented: $showResult) {
             if let score = viewModel.currentScore {
                 MockExamScoreResultView(score: score) {
-                    dismiss()
+                    showResult = false
+                    viewModel.isExamActive = false
                 }
             }
         }
@@ -113,11 +163,95 @@ struct MockExamSessionView: View {
     }
 }
 
+// MARK: - Question Overview Sheet
+
+private struct QuestionOverviewSheet: View {
+    let viewModel: MockExamViewModel
+    @Binding var isPresented: Bool
+    
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 6)
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 16) {
+                        legend(color: .blue, label: "Current")
+                        legend(color: .green, label: "Answered")
+                        legend(color: Color(.systemGray4), label: "Skipped")
+                        legend(color: Color(.systemGray6), label: "Not seen")
+                    }
+                    .font(.caption)
+                    .padding(.horizontal)
+                    
+                    LazyVGrid(columns: columns, spacing: 8) {
+                        ForEach(0..<viewModel.questions.count, id: \.self) { index in
+                            let visited = index <= viewModel.highestVisitedIndex
+                            Button {
+                                viewModel.currentIndex = index
+                                viewModel.questionTimeRemaining = 75
+                                isPresented = false
+                            } label: {
+                                Text("\(index + 1)")
+                                    .font(.callout.monospacedDigit())
+                                    .frame(width: 44, height: 44)
+                                    .background(backgroundColor(for: index))
+                                    .foregroundStyle(foregroundColor(for: index))
+                                    .cornerRadius(8)
+                            }
+                            .disabled(!visited)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .padding(.vertical)
+            }
+            .navigationTitle("Questions")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { isPresented = false }
+                }
+            }
+        }
+    }
+    
+    private func backgroundColor(for index: Int) -> Color {
+        if index == viewModel.currentIndex {
+            return .blue
+        } else if index > viewModel.highestVisitedIndex {
+            return Color(.systemGray6)
+        } else if viewModel.answers[viewModel.questions[index].question.id] != nil {
+            return .green.opacity(0.3)
+        } else {
+            return Color(.systemGray5)
+        }
+    }
+    
+    private func foregroundColor(for index: Int) -> Color {
+        if index == viewModel.currentIndex {
+            return .white
+        } else if index > viewModel.highestVisitedIndex {
+            return Color(.systemGray3)
+        } else {
+            return .primary
+        }
+    }
+    
+    private func legend(color: Color, label: String) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(color).frame(width: 10, height: 10)
+            Text(label)
+        }
+    }
+}
+
 // MARK: - Mock Exam Score Result View
 
 private struct MockExamScoreResultView: View {
     let score: MockExamScore
     let onDone: () -> Void
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
@@ -138,25 +272,36 @@ private struct MockExamScoreResultView: View {
                 .padding()
 
                 VStack(alignment: .leading) {
-                    Text("Category Breakdown")
+                    Text("Subject Breakdown")
                         .font(.headline)
                         .padding(.bottom)
 
-                    ForEach(score.categoryBreakdown, id: \.categoryId) { category in
+                    ForEach(score.subjectBreakdown) { subject in
                         HStack {
-                            Text(category.categoryName)
+                            Image(systemName: subject.passed ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .foregroundColor(subject.passed ? .green : .red)
+                            Text(subject.name)
                                 .font(.subheadline)
                             Spacer()
-                            Text("\(category.correctAnswers) / \(category.totalQuestions)")
-                                .foregroundColor(.blue)
+                            Text("\(subject.correctAnswers)/\(subject.totalQuestions)")
+                                .foregroundColor(subject.passed ? .blue : .red)
+                                .bold()
                         }
-                        .padding(.vertical, 5)
+                        .padding(.vertical, 4)
+                    }
+                    
+                    if !score.passed {
+                        Text("You need 75% (15/20) on every subject to pass.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
                     }
                 }
                 .padding()
 
                 Button {
                     onDone()
+                    dismiss()
                 } label: {
                     Text("Back to Mock Exams")
                         .frame(maxWidth: .infinity)
