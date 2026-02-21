@@ -12,6 +12,7 @@ struct ResultView: View {
     @State private var showReportSheet = false
     @State private var visualPromptText = ""
     @State private var showVisualPromptSheet = false
+    @State private var isExplanationExpanded = false
     
     var body: some View {
         ScrollView {
@@ -84,18 +85,24 @@ struct ResultView: View {
                 }
                 
                 if let explanation = question.question.explanation, !explanation.isEmpty {
-                    let isCorrect = viewModel.selectedAnswer == question.correctAnswerIndex
+                    quickDebriefCard(explanation: explanation)
+
                     DisclosureGroup(
-                        isExpanded: .constant(!isCorrect),
+                        isExpanded: $isExplanationExpanded,
                         content: {
-                            Text(makeAttributedString(from: explanation))
-                                .textSelection(.enabled)
-                                .padding()
-                                .background(Color.gray.opacity(0.1))
-                                .cornerRadius(AppCornerRadius.small)
+                            VStack(alignment: .leading, spacing: 10) {
+                                ForEach(Array(explanationSections(from: explanation).enumerated()), id: \.offset) { _, section in
+                                    Text(makeAttributedString(from: section))
+                                        .textSelection(.enabled)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                            .padding()
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(AppCornerRadius.small)
                         },
                         label: {
-                            Text("Explanation")
+                            Text("Official Explanation")
                                 .font(.headline)
                         }
                     )
@@ -285,6 +292,7 @@ struct ResultView: View {
                 isBookmarked = (try? deps.databaseManager.isBookmarked(questionId: question.question.id)) ?? false
                 note = try? deps.databaseManager.fetchNote(questionId: question.question.id)
             }
+            isExplanationExpanded = viewModel.selectedAnswer != question.correctAnswerIndex
         }
     }
     
@@ -336,6 +344,86 @@ struct ResultView: View {
             .cornerRadius(AppCornerRadius.medium)
         }
         .buttonStyle(.plain)
+    }
+
+    private struct DebriefItem {
+        let title: String
+        let detail: String
+    }
+
+    private func quickDebriefCard(explanation: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Quick Debrief", systemImage: "checklist")
+                .font(.subheadline.weight(.semibold))
+            ForEach(Array(debriefItems(from: explanation).enumerated()), id: \.offset) { index, item in
+                HStack(alignment: .top, spacing: 8) {
+                    Text("\(index + 1).")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.title)
+                            .font(.caption.weight(.semibold))
+                        Text(item.detail)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.blue.opacity(0.09), in: RoundedRectangle(cornerRadius: AppCornerRadius.medium))
+    }
+
+    private func debriefItems(from explanation: String) -> [DebriefItem] {
+        let sections = explanationSections(from: explanation)
+        let coreRule = sections.first ?? explanation
+        var items: [DebriefItem] = [DebriefItem(title: "Core Rule", detail: coreRule)]
+
+        if let selectedAnswer = viewModel.selectedAnswer,
+           selectedAnswer != question.correctAnswerIndex,
+           selectedAnswer < question.shuffledAnswers.count,
+           question.correctAnswerIndex < question.shuffledAnswers.count {
+            let selectedLabel = answerLabel(for: selectedAnswer)
+            let correctLabel = answerLabel(for: question.correctAnswerIndex)
+            let selectedText = question.shuffledAnswers[selectedAnswer].trimmingCharacters(in: .whitespacesAndNewlines)
+            let correctText = question.shuffledAnswers[question.correctAnswerIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+            items.append(DebriefItem(
+                title: "Correction",
+                detail: "You chose \(selectedLabel): \(selectedText). Correct is \(correctLabel): \(correctText)."
+            ))
+        }
+
+        items.append(DebriefItem(title: "Next Attempt Cue", detail: nextAttemptCue))
+        return Array(items.prefix(3))
+    }
+
+    private var nextAttemptCue: String {
+        let lower = question.question.text.lowercased()
+        if !question.questionAttachments.isEmpty {
+            return "Open the figure first and verify units, labels, and orientation before comparing options."
+        }
+        if lower.contains("metar") || lower.contains("taf") || lower.contains("weather") {
+            return "Decode weather questions in order: wind, visibility, cloud, then significant weather."
+        }
+        if lower.contains("mass") || lower.contains("balance") || lower.contains("performance") || lower.contains("load factor") {
+            return "State the governing formula mentally, then reject options that break the relationship."
+        }
+        return "Restate what variable is being asked, then eliminate answers that solve a different question."
+    }
+
+    private func explanationSections(from explanation: String) -> [String] {
+        let trimmed = explanation
+            .components(separatedBy: CharacterSet.newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return trimmed.isEmpty ? [explanation] : trimmed
+    }
+
+    private func answerLabel(for index: Int) -> String {
+        let labels = ["A", "B", "C", "D"]
+        guard labels.indices.contains(index) else { return "?" }
+        return labels[index]
     }
     
     private func makeAttributedString(from text: String) -> AttributedString {
