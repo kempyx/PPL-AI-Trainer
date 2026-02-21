@@ -3,6 +3,15 @@ import SwiftUI
 struct MockExamView: View {
     @State var viewModel: MockExamViewModel
     @State private var showSetup = false
+
+    private var bestScore: Double {
+        viewModel.examHistory.map(\.percentage).max() ?? 0
+    }
+
+    private var averageScore: Double {
+        guard !viewModel.examHistory.isEmpty else { return 0 }
+        return viewModel.examHistory.map(\.percentage).reduce(0, +) / Double(viewModel.examHistory.count)
+    }
     
     private var activeLeg: ExamLeg {
         viewModel.activeLeg
@@ -37,6 +46,21 @@ struct MockExamView: View {
                 }
                 
                 if !viewModel.examHistory.isEmpty {
+                    Section("Performance") {
+                        HStack {
+                            Label("Best", systemImage: "trophy.fill")
+                            Spacer()
+                            Text("\(Int(bestScore))%")
+                                .font(.headline)
+                        }
+                        HStack {
+                            Label("Average", systemImage: "chart.line.uptrend.xyaxis")
+                            Spacer()
+                            Text("\(Int(averageScore))%")
+                                .font(.headline)
+                        }
+                    }
+
                     Section {
                         MockExamTrendChart(results: viewModel.examHistory)
                             .listRowInsets(EdgeInsets())

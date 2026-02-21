@@ -53,9 +53,8 @@ struct SRSReviewView: View {
     }
     
     private func makeSRSQuizVM(_ deps: Dependencies) -> QuizViewModel {
-        let vm = deps.makeQuizViewModel()
-        vm.loadQuestions(categoryId: nil, parentCategoryId: nil, wrongAnswersOnly: false, srsDueOnly: true)
-        return vm
+        let vm = deps.quizCoordinator.makeViewModel(mode: .srsDue)
+                return vm
     }
     
     private func estimatedMinutes() -> Int {

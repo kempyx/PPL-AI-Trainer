@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct XPBarView: View {
+    @ScaledMetric(relativeTo: .body) private var barHeight = 12
     let totalXP: Int
     let currentLevel: PilotLevel
     let progress: Double
@@ -54,7 +55,7 @@ struct XPBarView: View {
                         .frame(width: geometry.size.width * animatedProgress)
                 }
             }
-            .frame(height: 12)
+            .frame(height: barHeight)
             .onAppear {
                 withAnimation(.easeOut(duration: 0.8)) {
                     animatedProgress = progress

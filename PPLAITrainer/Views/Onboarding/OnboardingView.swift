@@ -4,7 +4,7 @@ struct OnboardingView: View {
     @Bindable var viewModel: OnboardingViewModel
     var onComplete: () -> Void
     
-    private let totalPages = 4
+    private let totalPages = 5
     
     var body: some View {
         VStack(spacing: 0) {
@@ -32,13 +32,20 @@ struct OnboardingView: View {
             DailyGoalPickerView(
                 selectedGoal: $viewModel.dailyGoalTarget,
                 recommendedGoal: viewModel.recommendedGoal,
+                onContinue: { viewModel.nextPage() }
+            )
+            .tag(3)
+
+            AISetupPageView(
+                aiEnabled: $viewModel.aiEnabled,
+                selectedProvider: $viewModel.aiProvider,
                 onContinue: {
                     viewModel.requestNotifications()
                     viewModel.completeOnboarding()
                     onComplete()
                 }
             )
-            .tag(3)
+            .tag(4)
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
         .animation(.easeInOut, value: viewModel.currentPage)

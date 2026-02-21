@@ -33,7 +33,7 @@ struct ContentView: View {
     
     var body: some View {
         TabView {
-            DashboardView(viewModel: dashboardViewModel)
+            DashboardView(viewModel: dashboardViewModel, studyViewModel: studyViewModel)
                 .tabItem {
                     Label("Dashboard", systemImage: "chart.bar.fill")
                 }

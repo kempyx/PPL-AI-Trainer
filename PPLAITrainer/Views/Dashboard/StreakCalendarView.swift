@@ -18,19 +18,19 @@ struct StreakCalendarView: View {
                     VStack(spacing: 0) {
                         Text("\(currentStreak)")
                             .font(.subheadline.weight(.bold).monospacedDigit())
-                            .foregroundColor(currentStreak > 0 ? .orange : .secondary)
+                            .foregroundColor(currentStreak > 0 ? .streakActive : .secondary)
                         Text("Current")
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.primary.opacity(0.8))
                     }
 
                     VStack(spacing: 0) {
                         Text("\(longestStreak)")
                             .font(.subheadline.weight(.bold).monospacedDigit())
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.primary.opacity(0.8))
                         Text("Best")
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.primary.opacity(0.8))
                     }
                 }
             }
@@ -40,7 +40,7 @@ struct StreakCalendarView: View {
                 ForEach(["M", "T", "W", "T", "F", "S", "S"], id: \.self) { day in
                     Text(day)
                         .font(.system(size: 9, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.primary.opacity(0.8))
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -55,7 +55,7 @@ struct StreakCalendarView: View {
                         .frame(height: 24)
                         .overlay(
                             RoundedRectangle(cornerRadius: 3, style: .continuous)
-                                .stroke(isToday ? Color.blue : Color.clear, lineWidth: 2)
+                                .stroke(isToday ? Color.info : Color.clear, lineWidth: 2)
                         )
                 }
             }
@@ -64,7 +64,7 @@ struct StreakCalendarView: View {
             HStack(spacing: 4) {
                 Text("Less")
                     .font(.system(size: 9))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.primary.opacity(0.8))
                 ForEach(0..<4) { i in
                     RoundedRectangle(cornerRadius: 2, style: .continuous)
                         .fill(colorForIntensity(i))
@@ -72,7 +72,7 @@ struct StreakCalendarView: View {
                 }
                 Text("More")
                     .font(.system(size: 9))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.primary.opacity(0.8))
             }
         }
         .padding(16)
@@ -97,9 +97,9 @@ struct StreakCalendarView: View {
 
     private func colorForIntensity(_ intensity: Int) -> Color {
         switch intensity {
-        case 3: return .green
-        case 2: return .green.opacity(0.6)
-        case 1: return .green.opacity(0.3)
+        case 3: return .success
+        case 2: return .success.opacity(0.75)
+        case 1: return .success.opacity(0.55)
         default: return Color(.systemGray5)
         }
     }

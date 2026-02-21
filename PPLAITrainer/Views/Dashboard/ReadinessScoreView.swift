@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ReadinessScoreView: View {
+    @ScaledMetric(relativeTo: .title3) private var ringSize = 80
     let score: Double
     let totalQuestions: Int
     let totalCorrect: Int
@@ -13,12 +14,12 @@ struct ReadinessScoreView: View {
                 ZStack {
                     Circle()
                         .stroke(Color(.systemGray5), lineWidth: 8)
-                        .frame(width: 80, height: 80)
+                        .frame(width: ringSize, height: ringSize)
 
                     Circle()
                         .trim(from: 0, to: score / 100)
                         .stroke(scoreColor, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                        .frame(width: 80, height: 80)
+                        .frame(width: ringSize, height: ringSize)
                         .rotationEffect(.degrees(-90))
                         .animation(.easeInOut(duration: 0.6), value: score)
 
@@ -60,9 +61,9 @@ struct ReadinessScoreView: View {
     }
 
     private var scoreColor: Color {
-        if score >= 75 { return .green }
-        if score >= 50 { return .orange }
-        if score > 0 { return .red }
+        if score >= 75 { return .success }
+        if score >= 50 { return .warning }
+        if score > 0 { return .error }
         return .secondary
     }
     

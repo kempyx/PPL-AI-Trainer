@@ -3,6 +3,11 @@ import SwiftUI
 struct NextUpCard: View {
     @Environment(\.dependencies) private var dependencies
     @State private var recommendation: Recommendation?
+    @State private var studyViewModel: StudyViewModel
+
+    init(studyViewModel: StudyViewModel) {
+        self.studyViewModel = studyViewModel
+    }
     
     enum Recommendation {
         case reviewSRS(count: Int)
@@ -47,13 +52,9 @@ struct NextUpCard: View {
         if let deps = dependencies {
             switch rec {
             case .reviewSRS:
-                let vm = deps.makeQuizViewModel()
-                QuizSessionView(viewModel: vm)
-                    .onAppear {
-                        vm.loadQuestions(categoryId: nil, parentCategoryId: nil, wrongAnswersOnly: false, srsDueOnly: true)
-                    }
+                QuizSessionView(viewModel: deps.quizCoordinator.makeViewModel(mode: .srsDue))
             case .continueStudying:
-                StudyView(viewModel: StudyViewModel(databaseManager: deps.databaseManager))
+                StudyView(viewModel: studyViewModel)
             }
         } else {
             Text("Dependencies unavailable")

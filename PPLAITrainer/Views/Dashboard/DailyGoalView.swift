@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct DailyGoalView: View {
+    @ScaledMetric(relativeTo: .body) private var barHeight = 12
     let answeredToday: Int
     let target: Int
     
@@ -38,7 +39,7 @@ struct DailyGoalView: View {
                         .frame(width: geometry.size.width * animatedProgress)
                 }
             }
-            .frame(height: 12)
+            .frame(height: barHeight)
             .onAppear {
                 withAnimation(.easeOut(duration: 0.8)) {
                     animatedProgress = progress

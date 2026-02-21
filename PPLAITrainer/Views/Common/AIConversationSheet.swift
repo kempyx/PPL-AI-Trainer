@@ -31,13 +31,8 @@ struct AIConversationSheet: View {
                             }
                             
                             if viewModel.isLoadingAI {
-                                HStack {
-                                    ProgressView()
-                                    Text("Thinking...")
-                                        .foregroundStyle(.secondary)
-                                }
-                                .padding()
-                                .id("shimmer")
+                                LoadingAnimationView(requestCount: viewModel.requestCount)
+                                    .id("shimmer")
                             }
                             
                             if let error = viewModel.aiError {

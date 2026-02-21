@@ -110,6 +110,10 @@ struct StudyView: View {
                         NavigationLink { CategoryListView(viewModel: viewModel) } label: {
                             toolRow(icon: "list.bullet", title: "All Subjects")
                         }.buttonStyle(.plain)
+
+                        NavigationLink { FutureFeaturesHubView() } label: {
+                            toolRow(icon: "sparkles.rectangle.stack", title: "Study Lab")
+                        }.buttonStyle(.plain)
                     }
                 }
                 .padding()
@@ -281,18 +285,15 @@ struct StudyView: View {
     }
     
     private func makeSessionVM(_ deps: Dependencies, type: SessionType) -> QuizViewModel {
-        let vm = deps.makeQuizViewModel()
         let engine = SmartSessionEngine(databaseManager: deps.databaseManager)
         if let questions = try? engine.generateSession(type: type, leg: activeLeg), !questions.isEmpty {
-            vm.loadQuestions(from: questions)
+            return deps.quizCoordinator.makeViewModel(mode: .preloaded(questions))
         }
-        return vm
+        return deps.makeQuizViewModel()
     }
     
     private func makeWrongAnswersVM(_ deps: Dependencies) -> QuizViewModel {
-        let vm = deps.makeQuizViewModel()
-        vm.loadQuestions(categoryId: nil, parentCategoryId: nil, wrongAnswersOnly: true, srsDueOnly: false)
-        return vm
+        deps.quizCoordinator.makeViewModel(mode: .wrongAnswers)
     }
     
     private func emojiForCategory(_ name: String) -> String {

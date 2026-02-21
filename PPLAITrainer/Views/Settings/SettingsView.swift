@@ -487,30 +487,47 @@ struct SystemPromptEditor: View {
     @Bindable var viewModel: SettingsViewModel
     @FocusState private var isFocused: Bool
 
+    private let templates: [String: String] = [
+        "Concise": "You are a concise flight instructor. Keep explanations under 120 words.",
+        "Detailed": "You are an experienced flight instructor. Explain with steps, pitfalls, and practical examples.",
+        "Exam Focus": "You are a PPL exam coach. Explain why the correct answer is correct and why distractors fail."
+    ]
+
     var body: some View {
-        TextEditor(text: $viewModel.systemPrompt)
-            .font(.system(.body, design: .monospaced))
-            .focused($isFocused)
-            .padding(4)
-            .navigationTitle("System Prompt")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") { isFocused = false }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button(role: .destructive) {
-                            viewModel.resetSystemPrompt()
-                        } label: {
-                            Label("Reset to Default", systemImage: "arrow.counterclockwise")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
+        VStack(spacing: 12) {
+            TextEditor(text: $viewModel.systemPrompt)
+                .font(.system(.body, design: .monospaced))
+                .focused($isFocused)
+                .padding(4)
+                .frame(maxHeight: .infinity)
+
+            HStack {
+                Text("\(viewModel.systemPrompt.count) chars")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Reset") { viewModel.resetSystemPrompt() }
+                    .font(.caption.weight(.semibold))
                     .disabled(viewModel.isDefaultPrompt)
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Array(templates.keys), id: \.self) { key in
+                        Button(key) { viewModel.systemPrompt = templates[key] ?? viewModel.systemPrompt }
+                            .buttonStyle(.bordered)
+                    }
                 }
             }
+        }
+        .padding()
+        .navigationTitle("System Prompt")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { isFocused = false }
+            }
+        }
     }
 }
