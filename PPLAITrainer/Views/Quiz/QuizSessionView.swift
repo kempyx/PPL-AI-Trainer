@@ -96,7 +96,7 @@ struct QuizSessionView: View {
                 }
             }
 
-            if viewModel.hasSubmitted && viewModel.settingsManager.aiEnabled {
+            if viewModel.hasSubmitted && isAIAvailable {
                 Button {
                     viewModel.aiConversation?.showAISheet = true
                 } label: {
@@ -255,7 +255,7 @@ struct QuizSessionView: View {
 
     private var quizActionRail: some View {
         VStack(spacing: 8) {
-            if viewModel.settingsManager.aiEnabled,
+            if isAIAvailable,
                viewModel.isFloatingExplainEnabled,
                let selected = viewModel.selectedExplainText,
                !selected.isEmpty {
@@ -278,7 +278,7 @@ struct QuizSessionView: View {
                 .accessibilityHint("Ask AI to explain the selected aviation term in context")
             }
 
-            if viewModel.settingsManager.aiEnabled,
+            if isAIAvailable,
                viewModel.isPreSubmitHintEnabled,
                !viewModel.hasSubmitted {
                 Button {
@@ -356,6 +356,10 @@ struct QuizSessionView: View {
             categoryDeltas: [],
             suggestedAction: .continuePractice(remaining: 0)
         )
+    }
+
+    private var isAIAvailable: Bool {
+        dependencies?.isSelectedAIProviderConfigured == true
     }
 }
 

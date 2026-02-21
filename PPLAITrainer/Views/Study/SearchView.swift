@@ -85,7 +85,7 @@ struct QuestionDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 HStack {
-                    if dependencies?.settingsManager.aiEnabled == true {
+                    if dependencies?.isSelectedAIProviderConfigured == true {
                         Button {
                             showAISheet = true
                         } label: {
