@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @State var viewModel: SettingsViewModel
@@ -7,6 +8,8 @@ struct SettingsView: View {
     @State private var showLegSuggestion = false
     @State private var dismissedSuggestion: ExamLeg?
     @State private var kpiSnapshot: KPISnapshot?
+    @State private var kpiMarkdownReport: String = ""
+    @State private var showKPIReportSheet = false
 
     private struct KPISnapshot {
         let windowDays: Int
@@ -77,6 +80,31 @@ struct SettingsView: View {
             } message: {
                 if let suggested = viewModel.suggestedLeg {
                     Text("\(suggested.emoji) \(suggested.title) exam is coming up soon. Switch to focus on it?")
+                }
+            }
+            .sheet(isPresented: $showKPIReportSheet) {
+                NavigationStack {
+                    ScrollView {
+                        Text(kpiMarkdownReport)
+                            .font(.system(.footnote, design: .monospaced))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                    }
+                    .navigationTitle("KPI Report")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            HStack(spacing: 16) {
+                                Button("Copy") {
+                                    UIPasteboard.general.string = kpiMarkdownReport
+                                }
+                                ShareLink(item: kpiMarkdownReport) {
+                                    Image(systemName: "square.and.arrow.up")
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -386,6 +414,10 @@ struct SettingsView: View {
                 HStack {
                     SettingsSectionHeader(icon: "chart.xyaxis.line", title: "Product Metrics (7d)", color: .blue)
                     Spacer()
+                    Button("Export MD") {
+                        prepareKPIReport()
+                    }
+                    .font(.caption.weight(.semibold))
                     Button("Refresh") {
                         refreshKPISnapshot()
                     }
@@ -510,6 +542,59 @@ struct SettingsView: View {
             mockExamCompletions: eventCounts["mock_exam_completed"] ?? 0,
             wrongQueueCount: wrongQueueCount
         )
+    }
+
+    private func prepareKPIReport() {
+        if kpiSnapshot == nil {
+            refreshKPISnapshot()
+        }
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm"
+        let now = dateFormatter.string(from: Date())
+        let assignments = viewModel.settingsManager.experimentAssignments()
+        let assignmentLines = assignments.map {
+            "- \($0.experiment.title): `\($0.resolved)` (override: \($0.override ?? "Auto"))"
+        }.joined(separator: "\n")
+
+        if let kpiSnapshot {
+            kpiMarkdownReport = """
+            # PPL AI Trainer KPI Snapshot
+
+            Generated: \(now)
+            Window: Last \(kpiSnapshot.windowDays) days
+
+            ## Engagement
+            - Active study days: \(kpiSnapshot.activeDays)/\(kpiSnapshot.windowDays)
+            - Questions answered: \(kpiSnapshot.answeredQuestions)
+            - Goal-hit days: \(kpiSnapshot.goalHitDays)
+
+            ## Session Flow
+            - Quiz sessions started: \(kpiSnapshot.sessionStarts)
+            - Quiz sessions completed: \(kpiSnapshot.sessionCompletions)
+            - Completion rate: \(Int(kpiSnapshot.completionRate * 100))%
+            - Wrong-answer queue size: \(kpiSnapshot.wrongQueueCount)
+
+            ## AI Support Usefulness
+            - Hint requests: \(kpiSnapshot.hintRequests)
+            - Contextual explain requests: \(kpiSnapshot.contextualExplainRequests)
+            - Inline AI requests: \(kpiSnapshot.inlineAIRequests)
+
+            ## Mock Exam Outcomes
+            - Mock exam completions: \(kpiSnapshot.mockExamCompletions)
+
+            ## Active Experiments
+            \(assignmentLines)
+            """
+        } else {
+            kpiMarkdownReport = """
+            # PPL AI Trainer KPI Snapshot
+
+            Generated: \(now)
+
+            No KPI data available yet. Complete a study session, then refresh metrics.
+            """
+        }
+        showKPIReportSheet = true
     }
 
     private var dangerZoneCard: some View {
