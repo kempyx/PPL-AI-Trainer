@@ -84,14 +84,23 @@ struct MockExamSessionView: View {
                             .clipShape(Circle())
                     }
                     .disabled(viewModel.currentIndex == 0)
+                    .accessibilityLabel("Previous question")
                     
                     Spacer()
                     
                     if viewModel.currentIndex == viewModel.questions.count - 1 {
-                        Button("Submit") {
-                            viewModel.submitExam()
+                        VStack(alignment: .trailing, spacing: 6) {
+                            if viewModel.questions.count - answeredCount > 0 {
+                                Text("\(viewModel.questions.count - answeredCount) unanswered")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
+                            Button("Submit Exam") {
+                                viewModel.submitExam()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .accessibilityHint("Finish and score this mock exam")
                         }
-                        .buttonStyle(.borderedProminent)
                     } else {
                         Button {
                             viewModel.nextQuestion()
@@ -103,6 +112,7 @@ struct MockExamSessionView: View {
                                 .foregroundStyle(.white)
                                 .clipShape(Circle())
                         }
+                        .accessibilityLabel("Next question")
                     }
                 }
                 .padding()
@@ -173,7 +183,7 @@ struct MockExamSessionView: View {
                     passed: score.passed,
                     categoryBreakdown: breakdown,
                     leg: viewModel.activeLeg.rawValue
-                ))
+                ), reviewQuestions: viewModel.questions, reviewAnswers: viewModel.answers)
                 .onDisappear {
                     showResult = false
                     viewModel.isExamActive = false

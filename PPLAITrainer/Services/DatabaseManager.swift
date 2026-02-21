@@ -96,6 +96,10 @@ protocol DatabaseManaging {
     // Question reports
     func saveQuestionReport(questionId: Int64, reason: String, details: String?) throws
     
+    // Interaction analytics
+    func logInteractionEvent(name: String, questionId: Int64?, metadata: String?) throws
+    func fetchInteractionEventCounts(from: Date) throws -> [String: Int]
+    
     // Gamification helpers
     func fetchMnemonicCount() throws -> Int
     func fetchConsecutiveCorrectStreak(limit: Int) throws -> Int
@@ -265,6 +269,16 @@ final class DatabaseManager: DatabaseManaging {
                 t.column("reason", .text).notNull()
                 t.column("details", .text)
                 t.column("createdAt", .datetime).notNull()
+            }
+        }
+
+        migrator.registerMigration("v10-interaction-events") { db in
+            try db.create(table: "interaction_events") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("name", .text).notNull().indexed()
+                t.column("questionId", .integer).indexed()
+                t.column("metadata", .text)
+                t.column("createdAt", .datetime).notNull().indexed()
             }
         }
 
@@ -830,6 +844,37 @@ final class DatabaseManager: DatabaseManaging {
         }
     }
     
+    func logInteractionEvent(name: String, questionId: Int64?, metadata: String?) throws {
+        try dbQueue.write { db in
+            try db.execute(
+                sql: "INSERT INTO interaction_events (name, questionId, metadata, createdAt) VALUES (?, ?, ?, ?)",
+                arguments: [name, questionId, metadata, Date()]
+            )
+        }
+    }
+
+    func fetchInteractionEventCounts(from: Date) throws -> [String: Int] {
+        try dbQueue.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT name, COUNT(*) AS count
+                    FROM interaction_events
+                    WHERE createdAt >= ?
+                    GROUP BY name
+                """,
+                arguments: [from]
+            )
+            var counts: [String: Int] = [:]
+            for row in rows {
+                let name: String = row["name"]
+                let count: Int = row["count"]
+                counts[name] = count
+            }
+            return counts
+        }
+    }
+    
     // MARK: - Gamification Helpers
     
     func fetchMnemonicCount() throws -> Int {
@@ -881,7 +926,7 @@ final class DatabaseManager: DatabaseManaging {
     
     func resetAllProgress() throws {
         try dbQueue.write { db in
-            let tables = ["answer_records", "srs_cards", "mnemonics", "mock_exam_results", "study_days", "xp_events", "achievements", "bookmarks", "notes", "quiz_sessions"]
+            let tables = ["answer_records", "srs_cards", "mnemonics", "mock_exam_results", "study_days", "xp_events", "achievements", "bookmarks", "notes", "quiz_sessions", "interaction_events"]
             for table in tables {
                 try db.execute(sql: "DELETE FROM \(table)")
             }

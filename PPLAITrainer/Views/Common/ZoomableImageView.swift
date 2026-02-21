@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ZoomableImageView: View {
     let uiImage: UIImage
+    var onOpen: (() -> Void)? = nil
     @State private var showFullscreen = false
     
     var body: some View {
@@ -9,9 +10,20 @@ struct ZoomableImageView: View {
             .resizable()
             .scaledToFit()
             .frame(maxHeight: 200)
+            .overlay(alignment: .bottomTrailing) {
+                Label("Tap to zoom", systemImage: "magnifyingglass")
+                    .font(.caption2)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .padding(8)
+            }
             .onTapGesture {
+                onOpen?()
                 showFullscreen = true
             }
+            .accessibilityLabel("Reference image")
+            .accessibilityHint("Double tap to open fullscreen and zoom")
             .fullScreenCover(isPresented: $showFullscreen) {
                 FullscreenImageViewer(uiImage: uiImage, isPresented: $showFullscreen)
             }
@@ -86,6 +98,10 @@ private struct FullscreenImageViewer: View {
                     }
                 }
                 Spacer()
+                Text("Pinch to zoom. Drag to inspect details. Double tap to reset zoom.")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.85))
+                    .padding(.bottom, 24)
             }
         }
     }

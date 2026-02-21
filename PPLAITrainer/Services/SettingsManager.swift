@@ -23,6 +23,8 @@ final class SettingsManager {
         static let activeLeg = "activeLeg"
         static let lastStudiedSubjectId = "lastStudiedSubjectId"
         static let lastStudiedSubjectName = "lastStudiedSubjectName"
+        static let installationId = "installationId"
+        static let experimentOverrides = "experimentOverrides"
     }
     
     static let defaultSystemPrompt = """
@@ -38,12 +40,11 @@ final class SettingsManager {
       • - or • for bullet lists
       • ### for section headers (if needed)
       • > for important notes/quotes
-    - For mathematical formulas, use Unicode symbols (NOT LaTeX):
-      • Use ½ instead of \\frac{1}{2}
-      • Use ρ, α, β for Greek letters
-      • Use ² ³ for superscripts (V² not V^2)
-      • Use × ÷ ± for operators
-      • Example: "Q = ½ρV²" not "$Q = \\frac{1}{2} \\rho V^2$"
+    - For mathematical formulas, prefer LaTeX math notation with delimiters:
+      • Inline math: $V = d/t$ or \\(V = d/t\\)
+      • Display math: $$L = \\frac{1}{2}\\rho V^2 S C_L$$ or \\[L = \\frac{1}{2}\\rho V^2 S C_L\\]
+      • Keep formulas readable and include variable meaning when helpful
+      • Unicode symbols are fine too (for example ρ, α, β, ±)
     - State the correct answer and why in one sentence
     - Briefly note why their answer was wrong (if applicable)
     - Only elaborate if they ask follow-up questions
@@ -195,6 +196,51 @@ final class SettingsManager {
         lastStudiedSubjectId = id
         lastStudiedSubjectName = name
     }
+
+    // MARK: - Experiments
+
+    func experimentVariant(for experiment: AppExperiment) -> String {
+        if let override = experimentOverride(for: experiment),
+           experiment.variants.contains(override) {
+            return override
+        }
+        let variants = experiment.variants
+        guard !variants.isEmpty else { return "control" }
+        let seed = "\(installationId):\(experiment.rawValue)"
+        let idx = Int(stableHash(seed) % UInt64(variants.count))
+        return variants[idx]
+    }
+
+    func experimentOverride(for experiment: AppExperiment) -> String? {
+        guard let overrides = defaults.dictionary(forKey: Keys.experimentOverrides) as? [String: String] else {
+            return nil
+        }
+        return overrides[experiment.rawValue]
+    }
+
+    func setExperimentOverride(_ variant: String?, for experiment: AppExperiment) {
+        var overrides = (defaults.dictionary(forKey: Keys.experimentOverrides) as? [String: String]) ?? [:]
+        if let variant, !variant.isEmpty {
+            overrides[experiment.rawValue] = variant
+        } else {
+            overrides.removeValue(forKey: experiment.rawValue)
+        }
+        defaults.set(overrides, forKey: Keys.experimentOverrides)
+    }
+
+    func clearExperimentOverrides() {
+        defaults.removeObject(forKey: Keys.experimentOverrides)
+    }
+
+    func experimentAssignments() -> [ExperimentAssignment] {
+        AppExperiment.allCases.map { experiment in
+            ExperimentAssignment(
+                experiment: experiment,
+                override: experimentOverride(for: experiment),
+                resolved: experimentVariant(for: experiment)
+            )
+        }
+    }
     
     func resetUserProgress() {
         let keysToReset = [
@@ -205,6 +251,21 @@ final class SettingsManager {
         ]
         for key in keysToReset {
             defaults.removeObject(forKey: key)
+        }
+    }
+
+    private var installationId: String {
+        if let existing = defaults.string(forKey: Keys.installationId), !existing.isEmpty {
+            return existing
+        }
+        let newValue = UUID().uuidString
+        defaults.set(newValue, forKey: Keys.installationId)
+        return newValue
+    }
+
+    private func stableHash(_ input: String) -> UInt64 {
+        input.utf8.reduce(5381) { (hash, char) in
+            ((hash << 5) &+ hash) &+ UInt64(char)
         }
     }
 }

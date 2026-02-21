@@ -67,6 +67,11 @@ final class MockExamViewModel {
             logger.info("Loaded \(rawQuestions.count) questions for \(leg.title)")
             
             questions = try rawQuestions.map { try PresentedQuestion.from($0, databaseManager: databaseManager) }
+            try? databaseManager.logInteractionEvent(
+                name: "mock_exam_started",
+                questionId: nil,
+                metadata: "leg=\(leg.rawValue);practice=\(isPracticeMode);questionCount=\(questions.count)"
+            )
             
             startTime = Date()
             timeRemaining = mockExamEngine.timeLimit(leg: leg)
@@ -130,6 +135,11 @@ final class MockExamViewModel {
         timer?.cancel()
         timer = nil
         isExamActive = false
+        try? databaseManager.logInteractionEvent(
+            name: "mock_exam_abandoned",
+            questionId: nil,
+            metadata: "save=\(save);answered=\(answers.count);total=\(questions.count)"
+        )
         if save {
             Task { await scoreAndSaveExam() }
         } else {
@@ -147,6 +157,11 @@ final class MockExamViewModel {
             let score = try mockExamEngine.scoreExam(questions: questions.map(\.question), answers: answers, leg: leg)
             currentScore = score
             logger.info("Exam scored: \(score.correctAnswers)/\(score.totalQuestions) (\(Int(score.percentage))%)")
+            try? databaseManager.logInteractionEvent(
+                name: "mock_exam_completed",
+                questionId: nil,
+                metadata: "leg=\(leg.rawValue);passed=\(score.passed);percentage=\(score.percentage)"
+            )
             
             let result = MockExamResult(
                 id: nil, startedAt: startTime, completedAt: Date(),
