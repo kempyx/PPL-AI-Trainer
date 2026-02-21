@@ -13,6 +13,8 @@ class OnboardingViewModel {
     var examDateLeg2: Date? = Calendar.current.date(byAdding: .month, value: 3, to: Date())
     var examDateLeg3: Date? = Calendar.current.date(byAdding: .month, value: 3, to: Date())
     var dailyGoalTarget = 20
+    var aiEnabled = false
+    var aiProvider = "apple"
     var diagnosticCorrect = 0
     var diagnosticTotal = 0
     var isDiagnosticComplete = false
@@ -62,6 +64,8 @@ class OnboardingViewModel {
         settingsManager.examDateLeg2 = examDateLeg2
         settingsManager.examDateLeg3 = examDateLeg3
         settingsManager.dailyGoalTarget = dailyGoalTarget
+        settingsManager.aiEnabled = aiEnabled
+        settingsManager.selectedProvider = aiProvider
         settingsManager.hasCompletedOnboarding = true
         
         let validDates = [examDateLeg1, examDateLeg2, examDateLeg3].compactMap { $0 }.filter { $0 > Date() }

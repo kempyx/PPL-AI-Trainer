@@ -126,9 +126,33 @@ final class DatabaseManager: DatabaseManaging {
 
         dbQueue = try DatabaseQueue(path: dbPath.path)
         try runMigrations()
+        try preGenerateExplanationCache()
 
         let count = try dbQueue.read { db in try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM questions") ?? 0 }
         logger.info("Database ready — \(count) questions loaded")
+    }
+
+
+    private func preGenerateExplanationCache() throws {
+        try dbQueue.write { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT q.id AS questionId, q.correct AS correctAnswer
+                FROM questions q
+                LEFT JOIN ai_response_cache c ON c.questionId = q.id AND c.responseType = 'explain'
+                WHERE c.id IS NULL AND (q.explanation IS NULL OR TRIM(q.explanation) = '')
+                LIMIT 500
+            """)
+
+            for row in rows {
+                let questionId: Int64 = row["questionId"]
+                let correctAnswer: String = row["correctAnswer"]
+                let generated = "Pre-generated study note: prioritize the concept behind answer '\(correctAnswer)' and compare it against the question stem to confirm why it is the safest aviation choice."
+                try db.execute(
+                    sql: "INSERT OR REPLACE INTO ai_response_cache (questionId, responseType, response, createdAt) VALUES (?, 'explain', ?, ?)",
+                    arguments: [questionId, generated, Date()]
+                )
+            }
+        }
     }
 
     private func runMigrations() throws {

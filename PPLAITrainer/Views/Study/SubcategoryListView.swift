@@ -158,7 +158,7 @@ struct SubcategoryListView: View {
     }
 
     private func makeQuizVM(_ deps: Dependencies, categoryId: Int64? = nil, parentCategoryId: Int64? = nil, limit: Int? = nil) -> QuizViewModel {
-        let vm = deps.makeQuizViewModel()
+        let vm = deps.quizCoordinator.makeViewModel(mode: .category(categoryId: categoryId, parentCategoryId: parentCategoryId))
         if let limit = limit, let parentCategoryId = parentCategoryId {
             // Load limited questions from parent category
             Task { @MainActor in
@@ -167,11 +167,9 @@ struct SubcategoryListView: View {
                     let limitedQuestions = Array(allQuestions.shuffled().prefix(limit))
                     vm.loadQuestions(from: limitedQuestions)
                 } catch {
-                    vm.loadQuestions(categoryId: categoryId, parentCategoryId: parentCategoryId, wrongAnswersOnly: false, srsDueOnly: false)
-                }
+                        }
             }
         } else {
-            vm.loadQuestions(categoryId: categoryId, parentCategoryId: parentCategoryId, wrongAnswersOnly: false, srsDueOnly: false)
         }
         return vm
     }

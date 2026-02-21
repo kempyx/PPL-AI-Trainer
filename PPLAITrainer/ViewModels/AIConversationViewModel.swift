@@ -13,6 +13,7 @@ class AIConversationViewModel {
     var aiError: AIServiceError?
     var showConfirmation = false
     var showAISheet = false
+    var requestCount = 0
     
     private var pendingAIRequest: (() -> Void)?
     private var typewriterTask: Task<Void, Never>?
@@ -107,6 +108,7 @@ class AIConversationViewModel {
         guard settingsManager.aiEnabled else { return }
         
         isLoadingAI = true
+        requestCount += 1
         aiError = nil
         displayedAIText = ""
         

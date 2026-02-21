@@ -161,16 +161,23 @@ struct MockExamSessionView: View {
             if newScore != nil { showResult = true }
         }
         .navigationDestination(isPresented: $showResult) {
-            if let score = viewModel.currentScore {
-                MockExamScoreResultView(
-                    score: score,
-                    onDone: {
-                        showResult = false
-                        viewModel.isExamActive = false
-                    },
-                    questions: viewModel.questions,
-                    answers: viewModel.answers
-                )
+            if let score = viewModel.currentScore,
+               let breakdown = try? JSONEncoder().encode(score.subjectBreakdown) {
+                MockExamResultView(result: MockExamResult(
+                    id: nil,
+                    startedAt: Date(),
+                    completedAt: Date(),
+                    totalQuestions: score.totalQuestions,
+                    correctAnswers: score.correctAnswers,
+                    percentage: score.percentage,
+                    passed: score.passed,
+                    categoryBreakdown: breakdown,
+                    leg: viewModel.activeLeg.rawValue
+                ))
+                .onDisappear {
+                    showResult = false
+                    viewModel.isExamActive = false
+                }
             }
         }
     }
@@ -220,7 +227,7 @@ private struct QuestionOverviewSheet: View {
                                     
                                     if viewModel.flaggedQuestions.contains(index) {
                                         Image(systemName: "flag.fill")
-                                            .font(.system(size: 10))
+                                            .font(.caption2)
                                             .foregroundColor(.orange)
                                             .offset(x: 2, y: -2)
                                     }
@@ -271,6 +278,7 @@ private struct QuestionOverviewSheet: View {
 // MARK: - Mock Exam Score Result View
 
 private struct MockExamScoreResultView: View {
+    @ScaledMetric(relativeTo: .largeTitle) private var scoreSize = 60
     let score: MockExamScore
     let onDone: () -> Void
     let questions: [PresentedQuestion]
@@ -288,7 +296,7 @@ private struct MockExamScoreResultView: View {
                         .foregroundColor(score.passed ? .green : .red)
 
                     Text("\(score.percentage.isNaN ? 0 : Int(score.percentage))%")
-                        .font(.system(size: 60))
+                        .font(.system(size: scoreSize))
                         .bold()
 
                     Text("\(score.correctAnswers) / \(score.totalQuestions) correct")

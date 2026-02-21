@@ -36,12 +36,23 @@ struct AISettingsView: View {
             VStack(alignment: .leading, spacing: 16) {
                 SettingsSectionHeader(icon: "cpu", title: "AI Provider", color: .blue)
 
-                Picker("Provider", selection: $viewModel.selectedProvider) {
-                    ForEach(AIProviderType.allCases) { provider in
-                        Text(provider.displayName).tag(provider)
+                Menu {
+                    Picker("Provider", selection: $viewModel.selectedProvider) {
+                        ForEach(AIProviderType.allCases) { provider in
+                            Text(provider.displayName).tag(provider)
+                        }
                     }
+                } label: {
+                    HStack {
+                        Label(viewModel.selectedProvider.displayName, systemImage: "cpu")
+                        Spacer()
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(12)
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: AppCornerRadius.small))
                 }
-                .pickerStyle(.segmented)
 
                 VStack(spacing: 0) {
                     ForEach(viewModel.selectedProvider.availableModels) { model in

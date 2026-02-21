@@ -49,9 +49,7 @@ struct BookmarkedQuestionsView: View {
             if let deps = dependencies {
                 NavigationStack {
                     QuizSessionView(viewModel: {
-                        let vm = deps.makeQuizViewModel()
-                        vm.loadQuestions(from: bookmarkedQuestions)
-                        return vm
+                        deps.quizCoordinator.makeViewModel(mode: .preloaded(bookmarkedQuestions))
                     }())
                 }
             }

@@ -29,13 +29,16 @@ struct FeatureShowcaseView: View {
         VStack(spacing: 32) {
             Spacer()
             
-            TabView(selection: $currentPage) {
-                ForEach(Array(features.enumerated()), id: \.offset) { index, feature in
-                    FeatureCard(feature: feature)
-                        .tag(index)
+            VStack(spacing: 16) {
+                FeatureCard(feature: features[currentPage])
+                    .frame(height: 360)
+
+                HStack(spacing: 8) {
+                    pageDot(0)
+                    pageDot(1)
+                    pageDot(2)
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .always))
             .frame(height: 400)
             
             Button {
@@ -59,6 +62,12 @@ struct FeatureShowcaseView: View {
             .padding(.bottom, 48)
         }
         .padding()
+    }
+
+    private func pageDot(_ index: Int) -> some View {
+        Circle()
+            .fill(index == currentPage ? Color.primary : Color.secondary.opacity(0.3))
+            .frame(width: 8, height: 8)
     }
 }
 

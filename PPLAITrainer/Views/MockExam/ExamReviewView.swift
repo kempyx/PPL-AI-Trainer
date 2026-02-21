@@ -4,48 +4,62 @@ struct ExamReviewView: View {
     @Environment(\.dismiss) private var dismiss
     let questions: [PresentedQuestion]
     let answers: [Int64: String]
+
+    private struct ReviewItem: Identifiable {
+        let id: Int64
+        let question: PresentedQuestion
+        let isCorrect: Bool
+    }
+
+    private struct ReviewGroup: Identifiable {
+        let category: String
+        let questions: [ReviewItem]
+
+        var id: String { category }
+        var correctCount: Int { questions.filter { $0.isCorrect }.count }
+    }
     
-    private var groupedQuestions: [(category: String, questions: [(question: PresentedQuestion, isCorrect: Bool)])] {
-        var grouped: [String: [(PresentedQuestion, Bool)]] = [:]
+    private var groupedQuestions: [ReviewGroup] {
+        var grouped: [String: [ReviewItem]] = [:]
         
         for question in questions {
             let categoryName = question.categoryName
             let studentAnswer = answers[question.question.id] ?? ""
             let isCorrect = studentAnswer == question.question.correct
+            let item = ReviewItem(id: question.question.id, question: question, isCorrect: isCorrect)
             
             if grouped[categoryName] == nil {
                 grouped[categoryName] = []
             }
-            grouped[categoryName]?.append((question, isCorrect))
+            grouped[categoryName]?.append(item)
         }
         
-        return grouped.map { (category: $0.key, questions: $0.value) }
+        return grouped.map { ReviewGroup(category: $0.key, questions: $0.value) }
             .sorted { first, second in
-                let firstCorrect = first.questions.filter { $0.1 }.count
-                let secondCorrect = second.questions.filter { $0.1 }.count
-                return firstCorrect < secondCorrect
+                first.correctCount < second.correctCount
             }
+    }
+
+    private func sectionHeader(for group: ReviewGroup) -> some View {
+        HStack {
+            Text(group.category)
+            Spacer()
+            Text("\(group.correctCount)/\(group.questions.count)")
+                .foregroundColor(group.correctCount == group.questions.count ? .green : .orange)
+        }
     }
     
     var body: some View {
         NavigationStack {
             List {
-                ForEach(groupedQuestions, id: \.category) { group in
-                    Section {
-                        ForEach(Array(group.questions.enumerated()), id: \.offset) { index, item in
+                ForEach(groupedQuestions) { group in
+                    Section(header: sectionHeader(for: group)) {
+                        ForEach(group.questions) { item in
                             QuestionReviewRow(
                                 question: item.question,
                                 studentAnswer: answers[item.question.question.id] ?? "",
                                 isCorrect: item.isCorrect
                             )
-                        }
-                    } header: {
-                        HStack {
-                            Text(group.category)
-                            Spacer()
-                            let correct = group.questions.filter { $0.1 }.count
-                            Text("\(correct)/\(group.questions.count)")
-                                .foregroundColor(correct == group.questions.count ? .green : .orange)
                         }
                     }
                 }

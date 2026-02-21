@@ -2,11 +2,13 @@ import SwiftUI
 
 struct DashboardView: View {
     @State private var viewModel: DashboardViewModel
+    @State private var studyViewModel: StudyViewModel
     @AppStorage("dashboardProgressExpanded") private var progressExpanded = true
     @AppStorage("dashboardStreaksExpanded") private var streaksExpanded = true
 
-    init(viewModel: DashboardViewModel) {
+    init(viewModel: DashboardViewModel, studyViewModel: StudyViewModel) {
         self.viewModel = viewModel
+        self.studyViewModel = studyViewModel
     }
 
     var body: some View {
@@ -48,7 +50,7 @@ struct DashboardView: View {
                     )
                     .staggeredFadeIn(index: 0)
                     
-                    NextUpCard()
+                    NextUpCard(studyViewModel: studyViewModel)
                         .staggeredFadeIn(index: 1)
                     
                     DailyGoalView(

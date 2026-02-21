@@ -13,6 +13,11 @@ struct Dependencies {
     let soundService: SoundService
     let notificationService: NotificationService
     
+
+    var quizCoordinator: QuizCoordinator {
+        QuizCoordinator(dependencies: self)
+    }
+
     func makeQuizViewModel() -> QuizViewModel {
         QuizViewModel(
             databaseManager: databaseManager,

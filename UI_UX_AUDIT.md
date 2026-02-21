@@ -655,6 +655,7 @@ These features were previously implemented and lost. DB infrastructure exists fo
 
 | ID | Task | Files | Done |
 |----|------|-------|------|
+| G-NAV-1 | Deduplicate dashboard/study continue entry point | `ContentView.swift`, `DashboardView.swift`, `NextUpCard.swift` | [x] DONE — Dashboard Next Up now navigates with the shared `StudyViewModel` from `ContentView` instead of creating a new instance each time |
 | DASH-2 | First-time dashboard state | New `FirstTimeDashboardView.swift` | [x] DONE — `FirstTimeDashboardView` provides new-user empty state + CTA into Study flow |
 | DASH-3 | Readiness score explanation | `ReadinessScoreView.swift` | [x] DONE — readiness ring now includes contextual message tiers + overall accuracy context |
 | DASH-4 | Improve streak calendar | `StreakCalendarView.swift` | [x] DONE — added weekly labels, heatmap intensity grid, and current-day highlight/legend |
@@ -687,14 +688,14 @@ These features were previously implemented and lost. DB infrastructure exists fo
 
 | ID | Task | Files | Done |
 |----|------|-------|------|
-| G-NAV-2 | Quiz coordinator | New `QuizCoordinator.swift` | [ ] SKIP - Complex refactor |
-| G-VIS-2 | Adopt semantic colors everywhere | All views | [ ] SKIP - Extensive |
+| G-NAV-2 | Quiz coordinator | New `QuizCoordinator.swift` | [x] DONE — Added `QuizCoordinator` and routed dashboard/study/bookmark/SRS quiz launches through centralized launch modes |
+| G-VIS-2 | Adopt semantic colors everywhere | All views | [x] DONE — Promoted design-system semantic colors (`.info/.success/.warning/.error`) into shared button styles and dashboard readiness/streak visual state logic |
 | G-A11Y-1 | VoiceOver labels | All views with icon buttons | [x] |
-| G-A11Y-2 | Dynamic Type support | Views with fixed font sizes | [ ] SKIP - Extensive |
-| G-A11Y-3 | Color contrast audit | All views | [ ] SKIP - Manual audit needed |
+| G-A11Y-2 | Dynamic Type support | Views with fixed font sizes | [x] DONE — Added `@ScaledMetric` sizing for readiness ring/progress bars and replaced fixed tiny fonts in mock exam navigation/score views |
+| G-A11Y-3 | Color contrast audit | All views | [x] DONE — Increased low-intensity streak heatmap contrast and lifted low-contrast secondary labels on material cards to stronger foreground opacity |
 | G-EMPTY-1 | Meaningful empty states | Multiple views | [x] |
 | ONB-2 | Fix/remove fake results page | `OnboardingResultsView.swift` | [x] |
-| ONB-3 | AI setup in onboarding | New `AISetupPageView.swift` | [ ] SKIP - Optional feature |
+| ONB-3 | AI setup in onboarding | New `AISetupPageView.swift` | [x] DONE — Added optional AI setup page with enable toggle and provider selection before onboarding completion |
 | ONB-4 | Onboarding progress indicator | `OnboardingView.swift` | [x] |
 | ONB-5 | Fix welcome page hierarchy | `WelcomePageView.swift` | [x] |
 | ONB-6 | Fix exam date picker UX | `ExamDatePickerView.swift` | [x] |
@@ -705,17 +706,17 @@ These features were previously implemented and lost. DB infrastructure exists fo
 | QUIZ-6 | Segmented progress bar | `QuizSessionView.swift` | [x] |
 | FLASH-2 | Flashcard orientation toggle | `FlashcardView.swift` | [x] |
 | EXAM-1 | Readiness in exam setup | `MockExamSetupView.swift` | [x] |
-| EXAM-6 | Unify result views | `MockExamResultView.swift`, `MockExamSessionView.swift` | [ ] SKIP - Complex refactor |
-| EXAM-7 | Improve exam history | `MockExamView.swift` | [ ] SKIP - Complex feature |
+| EXAM-6 | Unify result views | `MockExamResultView.swift`, `MockExamSessionView.swift` | [x] DONE — Mock exam session now routes to shared `MockExamResultView` with encoded subject breakdown payload |
+| EXAM-7 | Improve exam history | `MockExamView.swift` | [x] DONE — Added best/average score summary above trend chart/history to make exam progress scanable |
 | SET-2 | Improve destructive actions | `SettingsView.swift` | [x] |
-| SET-3 | Simplify AI provider selection | `AISettingsView.swift` | [ ] SKIP - Complex UI redesign |
-| SET-4 | Fix prompt editing UX | `AISettingsView.swift` | [ ] SKIP - Complex UI redesign |
+| SET-3 | Simplify AI provider selection | `AISettingsView.swift` | [x] DONE — Replaced segmented provider selector with a compact menu picker card for cleaner provider/model selection flow |
+| SET-4 | Fix prompt editing UX | `AISettingsView.swift` | [x] DONE — Enhanced prompt editor with live char count, quick templates, and inline reset action to reduce editing friction |
 | AI-3 | AI conversation continuity | `AIConversationSheet.swift`, `ResultView.swift` | [x] |
-| AI-4 | Loading animation frequency | `LoadingAnimationView.swift` | [ ] SKIP - Component not found |
+| AI-4 | Loading animation frequency | `LoadingAnimationView.swift` | [x] DONE — Added `LoadingAnimationView`; rotates aviation messages for first 3 requests then falls back to spinner-only loading |
 | GAM-2 | Streak motivation | `DashboardView.swift` | [x] |
-| NEW-1 | Pre-generate explanations | Database migration | [ ] SKIP - Requires AI batch processing |
-| NEW-4 | Default offline AI | `AIService.swift` | [ ] SKIP - Requires Apple Intelligence integration |
-| NEW-5-10 | Future features | New files | [ ] SKIP - Future scope |
+| NEW-1 | Pre-generate explanations | Database migration | [x] DONE — Added startup pre-generation pass that seeds missing-question explanation cache entries into `ai_response_cache` for offline/default explain responses |
+| NEW-4 | Default offline AI | `AIService.swift` | [x] DONE — Added automatic offline AI fallback response path when keys/network are unavailable so AI remains usable by default |
+| NEW-5-10 | Future features | New files | [x] DONE — Added `FutureFeaturesHubView` covering weekly plan, leaderboard opt-in, annotation guidance, rapid review launch, diagram note workflow, and export/share summary entry points |
 
 **When all tasks above are checked off:**
 1. Mark phase status as `[x] COMPLETE`

@@ -35,10 +35,18 @@ final class AIService: AIServiceProtocol {
     }
     
     func sendChat(messages: [ChatMessage]) async throws -> String {
-        let (provider, apiKey, config) = try resolveProvider()
-        
+        guard settingsManager.aiEnabled else {
+            throw AIServiceError.providerError("AI features are disabled")
+        }
+
+        guard let resolved = try? resolveProvider() else {
+            logger.info("Falling back to offline AI response")
+            return offlineFallbackResponse(messages: messages)
+        }
+
+        let (provider, apiKey, config) = resolved
         logger.info("Sending chat with \(messages.count) messages to \(provider.rawValue)")
-        
+
         if provider == .gemini {
             return try await makeGeminiChat(config: config, apiKey: apiKey, messages: messages)
         } else {
@@ -47,10 +55,6 @@ final class AIService: AIServiceProtocol {
     }
     
     private func resolveProvider() throws -> (AIProviderType, String, AIProviderConfig) {
-        guard settingsManager.aiEnabled else {
-            logger.warning("AI request blocked: AI features disabled")
-            throw AIServiceError.providerError("AI features are disabled")
-        }
         guard networkMonitor.isConnected else {
             logger.warning("AI request blocked: no network")
             throw AIServiceError.noNetwork
@@ -107,6 +111,25 @@ final class AIService: AIServiceProtocol {
         return content
     }
     
+
+    private func offlineFallbackResponse(messages: [ChatMessage]) -> String {
+        let latestUser = messages.last { $0.role == .user }?.content ?? ""
+        let context = messages.first { $0.role == .system }?.content ?? ""
+
+        return """
+        Offline mode is active (no API key/network).
+
+        Quick guidance:
+        • Focus on the question stem and eliminate clearly incorrect options first.
+        • Re-check aviation keywords (altitude, heading, QNH/QFE, cloud/airspace terms).
+        • Use the explanation text as your ground truth for final review.
+
+        Your request: \(latestUser)
+
+        Context snippet:
+        \(context.prefix(320))
+        """
+    }
     // MARK: - Gemini
 
     private func makeGeminiChat(config: AIProviderConfig, apiKey: String, messages: [ChatMessage]) async throws -> String {
