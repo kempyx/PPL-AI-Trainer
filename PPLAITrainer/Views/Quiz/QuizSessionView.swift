@@ -6,6 +6,7 @@ struct QuizSessionView: View {
     @State var viewModel: QuizViewModel
     @State private var showSummary = false
     @State private var reviewWrongAnswersVM: QuizViewModel?
+    @State private var autoSubmitTask: Task<Void, Never>?
 
     private var scorePercentage: Int {
         guard viewModel.questionsAnswered > 0 else { return 0 }
@@ -172,6 +173,18 @@ struct QuizSessionView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
             viewModel.saveSessionState(categoryId: nil, categoryName: nil)
         }
+        .onChange(of: viewModel.selectedAnswer) { _, selectedAnswer in
+            autoSubmitTask?.cancel()
+            guard selectedAnswer != nil, !viewModel.hasSubmitted else { return }
+            autoSubmitTask = Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(450))
+                guard !Task.isCancelled else { return }
+                viewModel.submitAnswer()
+            }
+        }
+        .onDisappear {
+            autoSubmitTask?.cancel()
+        }
     }
 
     // MARK: - Quiz Complete View
@@ -299,21 +312,21 @@ struct QuizSessionView: View {
                 }
             }
 
-            if !viewModel.hasSubmitted {
+            if viewModel.hasSubmitted {
                 Button {
-                    viewModel.submitAnswer()
+                    viewModel.updateSelectedExplainText(nil)
+                    viewModel.nextQuestion()
                 } label: {
-                    Text("Submit")
+                    Text("Next Question")
                         .font(.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(viewModel.selectedAnswer == nil ? Color.gray : Color.blue)
+                        .background(Color.blue)
                         .cornerRadius(12)
                 }
-                .disabled(viewModel.selectedAnswer == nil)
                 .padding(.horizontal)
-                .accessibilityHint("Submit your selected answer")
+                .accessibilityHint("Move to the next question")
             }
         }
         .padding(.bottom, 8)

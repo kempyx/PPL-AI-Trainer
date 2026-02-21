@@ -164,9 +164,11 @@ final class QuizViewModel {
         if isCorrect { 
             correctCount += 1
             showCorrectFlash = true
+            hapticService.correctAnswer()
         } else {
             shakeIncorrect += 1
             showIncorrectFlash = true
+            hapticService.incorrectAnswer()
         }
         questionsAnswered += 1
         logInteractionEvent(name: "quiz_answer_submitted", questionId: current.question.id, metadata: "isCorrect=\(isCorrect)")
@@ -183,13 +185,6 @@ final class QuizViewModel {
         do {
             // Award XP
             _ = try gamificationService.awardXP(for: correct, isSRSCard: false)
-            
-            // Haptics
-            if correct {
-                hapticService.correctAnswer()
-            } else {
-                hapticService.incorrectAnswer()
-            }
             
             // Streak milestone haptics
             let streak = gamificationService.consecutiveCorrectInSession
