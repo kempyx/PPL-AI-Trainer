@@ -278,7 +278,7 @@ final class QuizViewModel {
         
         if selectedModelSupportsVision() {
             let attachmentFiles = (current.questionAttachments + current.explanationAttachments).map(\.filename)
-            let multimodalPayloads = attachmentFiles.compactMap { name in
+            let multimodalPayloads: [String] = attachmentFiles.compactMap { name in
                 guard let dataURL = base64DataURL(for: name) else { return nil }
                 return "- \(name): \(dataURL)"
             }

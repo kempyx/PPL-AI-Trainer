@@ -30,8 +30,8 @@ struct FeatureShowcaseView: View {
             Spacer()
             
             TabView(selection: $currentPage) {
-                ForEach(Array(features.enumerated()), id: \.offset) { index, feature in
-                    FeatureCard(feature: feature)
+                ForEach(features.indices, id: \.self) { index in
+                    FeatureCard(feature: features[index])
                         .tag(index)
                 }
             }
