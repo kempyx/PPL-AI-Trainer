@@ -64,6 +64,9 @@ struct QuizSessionView: View {
                     Spacer()
                 } else if viewModel.isQuizComplete {
                     quizCompleteView
+                        .onAppear {
+                            viewModel.clearSavedSession()
+                        }
                 } else {
                     ContentUnavailableView("No Questions", systemImage: "questionmark.circle", description: Text("Answer some questions first to unlock this session type"))
                 }
@@ -151,6 +154,9 @@ struct QuizSessionView: View {
             if viewModel.gamificationService.didLevelUp {
                 ConfettiView()
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            viewModel.saveSessionState(categoryId: nil, categoryName: nil)
         }
     }
 

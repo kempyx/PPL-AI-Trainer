@@ -93,6 +93,40 @@ struct ResultView: View {
                     }
                 }
                 
+                if viewModel.settingsManager.aiEnabled {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 8) {
+                            ForEach([QuizViewModel.AIRequestType.explain, .simplify, .analogy, .commonMistakes], id: \.self) { type in
+                                Button {
+                                    viewModel.requestInlineAI(type: type)
+                                } label: {
+                                    Text(type.buttonLabel)
+                                        .font(.caption.weight(.medium))
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(.purple)
+                            }
+                        }
+                        
+                        if viewModel.isLoadingInlineAI {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        }
+                        
+                        if let response = viewModel.aiInlineResponse {
+                            VStack(alignment: .leading) {
+                                Text("AI Response")
+                                    .font(.headline)
+                                Text(response)
+                                    .textSelection(.enabled)
+                                    .padding()
+                                    .background(Color.purple.opacity(0.1))
+                                    .cornerRadius(AppCornerRadius.small)
+                            }
+                        }
+                    }
+                }
+                
                 if let mnemonic = viewModel.aiMnemonic {
                     VStack(alignment: .leading) {
                         Text("Mnemonic")
@@ -102,6 +136,39 @@ struct ResultView: View {
                             .padding()
                             .background(Color.blue.opacity(0.1))
                             .cornerRadius(8)
+                    }
+                }
+                
+                if viewModel.settingsManager.aiEnabled && viewModel.selectedAnswer != question.correctAnswerIndex {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if viewModel.aiHint == nil && !viewModel.isLoadingHint {
+                            Button {
+                                viewModel.getQuestionHint()
+                            } label: {
+                                HStack {
+                                    Image(systemName: "lightbulb")
+                                    Text("Get a Hint")
+                                }
+                            }
+                            .buttonStyle(SecondaryButtonStyle())
+                        }
+                        
+                        if viewModel.isLoadingHint {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        }
+                        
+                        if let hint = viewModel.aiHint {
+                            VStack(alignment: .leading) {
+                                Text("Hint")
+                                    .font(.headline)
+                                Text(hint)
+                                    .textSelection(.enabled)
+                                    .padding()
+                                    .background(Color.orange.opacity(0.1))
+                                    .cornerRadius(AppCornerRadius.small)
+                            }
+                        }
                     }
                 }
                 

@@ -51,6 +51,7 @@ struct CategoryProgress {
     let percentage: Double
     let totalQuestions: Int
     let answeredCorrectly: Int
+    let answeredIncorrectly: Int
 }
 
 struct WeakArea {

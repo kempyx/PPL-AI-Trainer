@@ -81,6 +81,15 @@ protocol DatabaseManaging {
     func fetchNote(questionId: Int64) throws -> Note?
     func deleteNote(questionId: Int64) throws
     
+    // Quiz session persistence
+    func saveQuizSession(_ session: QuizSessionState) throws
+    func loadQuizSession() throws -> QuizSessionState?
+    func clearQuizSession() throws
+    
+    // AI response caching
+    func saveAIResponse(_ cache: AIResponseCache) throws
+    func fetchAIResponse(questionId: Int64, responseType: String) throws -> AIResponseCache?
+    
     // Search
     func searchQuestions(query: String, limit: Int) throws -> [Question]
     
@@ -197,6 +206,29 @@ final class DatabaseManager: DatabaseManaging {
             try db.alter(table: "mock_exam_results") { t in
                 t.add(column: "leg", .integer).notNull().defaults(to: 1)
             }
+        }
+        
+        migrator.registerMigration("v7-quiz-sessions") { db in
+            try db.create(table: "quiz_sessions") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("categoryId", .integer)
+                t.column("categoryName", .text)
+                t.column("currentIndex", .integer).notNull()
+                t.column("questionIds", .text).notNull()
+                t.column("answers", .text).notNull()
+                t.column("timestamp", .datetime).notNull()
+            }
+        }
+        
+        migrator.registerMigration("v8-ai-cache") { db in
+            try db.create(table: "ai_response_cache") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("questionId", .integer).notNull().indexed()
+                t.column("responseType", .text).notNull()
+                t.column("response", .text).notNull()
+                t.column("createdAt", .datetime).notNull()
+            }
+            try db.create(index: "idx_ai_cache_question_type", on: "ai_response_cache", columns: ["questionId", "responseType"], unique: true)
         }
 
         try migrator.migrate(dbQueue)
@@ -803,10 +835,51 @@ final class DatabaseManager: DatabaseManaging {
     
     func resetAllProgress() throws {
         try dbQueue.write { db in
-            let tables = ["answer_records", "srs_cards", "mnemonics", "mock_exam_results", "study_days", "xp_events", "achievements", "bookmarks", "notes"]
+            let tables = ["answer_records", "srs_cards", "mnemonics", "mock_exam_results", "study_days", "xp_events", "achievements", "bookmarks", "notes", "quiz_sessions"]
             for table in tables {
                 try db.execute(sql: "DELETE FROM \(table)")
             }
+        }
+    }
+    
+    // MARK: - Quiz Session Persistence
+    
+    func saveQuizSession(_ session: QuizSessionState) throws {
+        try dbQueue.write { db in
+            // Clear any existing session first
+            try db.execute(sql: "DELETE FROM quiz_sessions")
+            // Save new session
+            var mutableSession = session
+            try mutableSession.insert(db)
+        }
+    }
+    
+    func loadQuizSession() throws -> QuizSessionState? {
+        try dbQueue.read { db in
+            try QuizSessionState.fetchOne(db)
+        }
+    }
+    
+    func clearQuizSession() throws {
+        try dbQueue.write { db in
+            try db.execute(sql: "DELETE FROM quiz_sessions")
+        }
+    }
+    
+    // MARK: - AI Response Caching
+    
+    func saveAIResponse(_ cache: AIResponseCache) throws {
+        try dbQueue.write { db in
+            var mutableCache = cache
+            try mutableCache.save(db)
+        }
+    }
+    
+    func fetchAIResponse(questionId: Int64, responseType: String) throws -> AIResponseCache? {
+        try dbQueue.read { db in
+            try AIResponseCache
+                .filter(Column("questionId") == questionId && Column("responseType") == responseType)
+                .fetchOne(db)
         }
     }
 }

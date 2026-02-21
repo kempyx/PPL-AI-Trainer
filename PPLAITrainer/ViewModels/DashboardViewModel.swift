@@ -107,6 +107,7 @@ final class DashboardViewModel {
                 let name: String
                 let totalQuestions: Int
                 let correctAnswers: Int
+                let answeredQuestions: Int
                 let sortOrder: Int64
             }
 
@@ -118,6 +119,7 @@ final class DashboardViewModel {
                     name: entry.category.name,
                     totalQuestions: entry.stats.totalQuestions,
                     correctAnswers: entry.stats.correctAnswers,
+                    answeredQuestions: entry.stats.answeredQuestions,
                     sortOrder: entry.category.sortorder ?? Int64.max
                 ))
             }
@@ -126,12 +128,14 @@ final class DashboardViewModel {
                 let name = groupMap[groupId] ?? members.first?.category.name ?? "Unknown"
                 let total = members.reduce(0) { $0 + $1.stats.totalQuestions }
                 let correct = members.reduce(0) { $0 + $1.stats.correctAnswers }
+                let answered = members.reduce(0) { $0 + $1.stats.answeredQuestions }
                 let minSort = members.compactMap(\.category.sortorder).min() ?? Int64.max
                 all.append(ProgressEntry(
                     id: groupId,
                     name: name,
                     totalQuestions: total,
                     correctAnswers: correct,
+                    answeredQuestions: answered,
                     sortOrder: minSort
                 ))
             }
@@ -140,7 +144,15 @@ final class DashboardViewModel {
 
             categoryProgress = all.map { entry in
                 let pct = entry.totalQuestions > 0 ? Double(entry.correctAnswers) / Double(entry.totalQuestions) * 100 : 0
-                return CategoryProgress(id: entry.id, name: entry.name, percentage: pct, totalQuestions: entry.totalQuestions, answeredCorrectly: entry.correctAnswers)
+                let incorrect = entry.answeredQuestions - entry.correctAnswers
+                return CategoryProgress(
+                    id: entry.id,
+                    name: entry.name,
+                    percentage: pct,
+                    totalQuestions: entry.totalQuestions,
+                    answeredCorrectly: entry.correctAnswers,
+                    answeredIncorrectly: incorrect
+                )
             }
 
             // Compute readiness based on SRS mastery (box 3+)
