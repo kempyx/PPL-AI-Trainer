@@ -83,3 +83,12 @@ struct XPBarView: View {
         .cornerRadius(AppCornerRadius.medium)
     }
 }
+
+#Preview {
+    XPBarView(
+        totalXP: 1250,
+        currentLevel: PilotLevel.level(for: 1250),
+        progress: 0.65
+    )
+    .environment(\.dependencies, Dependencies.preview)
+}

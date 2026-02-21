@@ -48,3 +48,11 @@ struct ExamCountdownView: View {
         }
     }
 }
+
+#Preview {
+    ExamCountdownView(
+        examDateLeg1: Date().addingTimeInterval(30 * 24 * 60 * 60),
+        examDateLeg2: Date().addingTimeInterval(60 * 24 * 60 * 60),
+        examDateLeg3: Date().addingTimeInterval(90 * 24 * 60 * 60)
+    )
+}

@@ -84,3 +84,11 @@ struct DailyGoalPickerView: View {
         }
     }
 }
+
+#Preview {
+    DailyGoalPickerView(
+        selectedGoal: .constant(20),
+        recommendedGoal: 15,
+        onContinue: {}
+    )
+}

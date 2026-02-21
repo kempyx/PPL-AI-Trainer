@@ -40,3 +40,7 @@ struct MockExamTrendChart: View {
         .cardStyle()
     }
 }
+
+#Preview {
+    MockExamTrendChart(results: [])
+}

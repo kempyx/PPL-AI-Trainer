@@ -83,3 +83,8 @@ extension View {
             .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isActive)
     }
 }
+
+#Preview {
+    Text("Sample Text")
+        .staggeredFadeIn(index: 0)
+}

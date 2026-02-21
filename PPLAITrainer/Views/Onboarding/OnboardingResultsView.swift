@@ -41,3 +41,10 @@ struct OnboardingResultsView: View {
         .padding()
     }
 }
+
+#Preview {
+    OnboardingResultsView(
+        percentage: 78,
+        onFinish: {}
+    )
+}

@@ -55,3 +55,11 @@ struct DailyGoalView: View {
         .cardStyle()
     }
 }
+
+#Preview {
+    DailyGoalView(
+        answeredToday: 15,
+        target: 20
+    )
+    .environment(\.dependencies, Dependencies.preview)
+}

@@ -104,3 +104,15 @@ struct StreakCalendarView: View {
         }
     }
 }
+
+#Preview {
+    StreakCalendarView(
+        studyDays: [
+            StudyDay(date: DateFormatter.yyyyMMdd.string(from: Date()), questionsAnswered: 25, correctAnswers: 20),
+            StudyDay(date: DateFormatter.yyyyMMdd.string(from: Calendar.current.date(byAdding: .day, value: -1, to: Date())!), questionsAnswered: 15, correctAnswers: 12)
+        ],
+        currentStreak: 12,
+        longestStreak: 28
+    )
+    .environment(\.dependencies, Dependencies.preview)
+}

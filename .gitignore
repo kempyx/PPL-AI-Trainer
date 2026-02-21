@@ -1,2 +1,3 @@
 # Local automation/build artifacts
 .build/
+tmp/

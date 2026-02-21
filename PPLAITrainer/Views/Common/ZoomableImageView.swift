@@ -90,3 +90,11 @@ private struct FullscreenImageViewer: View {
         }
     }
 }
+
+#Preview {
+    if let previewImage = UIImage(systemName: "airplane") {
+        ZoomableImageView(uiImage: previewImage)
+    } else {
+        Text("Preview image unavailable")
+    }
+}

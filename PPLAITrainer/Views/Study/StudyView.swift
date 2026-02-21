@@ -311,3 +311,8 @@ struct StudyView: View {
         return "📚"
     }
 }
+
+#Preview {
+    StudyView(viewModel: StudyViewModel(databaseManager: Dependencies.preview.databaseManager))
+        .environment(\.dependencies, Dependencies.preview)
+}

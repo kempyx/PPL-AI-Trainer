@@ -58,3 +58,12 @@ struct WeakAreasView: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
+
+#Preview {
+    WeakAreasView(weakAreas: [
+        WeakArea(id: 1, subcategoryName: "Meteorology", parentCategoryName: "General Navigation", correctPercentage: 42.2, totalAnswered: 45),
+        WeakArea(id: 2, subcategoryName: "Radio Navigation", parentCategoryName: "Navigation", correctPercentage: 47.4, totalAnswered: 38),
+        WeakArea(id: 3, subcategoryName: "Flight Planning", parentCategoryName: "Flight Performance", correctPercentage: 51.9, totalAnswered: 52)
+    ])
+    .environment(\.dependencies, Dependencies.preview)
+}

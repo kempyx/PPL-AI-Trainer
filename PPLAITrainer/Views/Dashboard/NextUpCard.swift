@@ -98,3 +98,8 @@ struct NextUpCard: View {
         }
     }
 }
+
+#Preview {
+    NextUpCard(studyViewModel: StudyViewModel(databaseManager: Dependencies.preview.databaseManager))
+        .environment(\.dependencies, Dependencies.preview)
+}

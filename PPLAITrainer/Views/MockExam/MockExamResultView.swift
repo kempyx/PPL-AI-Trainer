@@ -59,3 +59,20 @@ struct MockExamResultView: View {
         .navigationTitle("Exam Result")
     }
 }
+
+#Preview {
+    let breakdown = Data("[]".utf8)
+    MockExamResultView(
+        result: MockExamResult(
+            id: 1,
+            startedAt: Date().addingTimeInterval(-3600),
+            completedAt: Date(),
+            totalQuestions: 60,
+            correctAnswers: 51,
+            percentage: 85,
+            passed: true,
+            categoryBreakdown: breakdown,
+            leg: ExamLeg.technicalLegal.rawValue
+        )
+    )
+}

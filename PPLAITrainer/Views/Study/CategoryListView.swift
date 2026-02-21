@@ -272,3 +272,9 @@ struct QuizProgressBar: View {
         .frame(height: 6)
     }
 }
+
+#Preview {
+    let deps = Dependencies.preview
+    CategoryListView(viewModel: StudyViewModel(databaseManager: deps.databaseManager))
+        .environment(\.dependencies, deps)
+}

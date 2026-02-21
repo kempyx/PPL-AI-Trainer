@@ -66,3 +66,9 @@ struct SRSReviewView: View {
         return try? deps.databaseManager.fetchNextReviewDate()
     }
 }
+
+#Preview {
+    let deps = Dependencies.preview
+    SRSReviewView(viewModel: StudyViewModel(databaseManager: deps.databaseManager))
+        .environment(\.dependencies, deps)
+}

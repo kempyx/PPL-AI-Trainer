@@ -267,3 +267,13 @@ private struct SubcategoryRow: View {
         return .red
     }
 }
+
+#Preview {
+    @Previewable @State var viewModel = StudyViewModel(databaseManager: MockDatabaseManager())
+    SubcategoryListView(
+        viewModel: viewModel,
+        parentId: 1,
+        parentName: "Sample Category"
+    )
+    .environment(\.dependencies, Dependencies.preview)
+}

@@ -494,3 +494,14 @@ struct AIConversationSheet: View {
         }
     }
 }
+
+#Preview {
+    let deps = Dependencies.preview
+    let viewModel = AIConversationViewModel(
+        aiService: deps.aiService,
+        settingsManager: deps.settingsManager,
+        contextProvider: { "Sample question context for preview." }
+    )
+    AIConversationSheet(viewModel: viewModel)
+        .environment(\.dependencies, deps)
+}

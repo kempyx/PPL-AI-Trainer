@@ -346,3 +346,8 @@ private struct SearchResultRow: View {
         }
     }
 }
+
+#Preview {
+    SearchView()
+        .environment(\.dependencies, Dependencies.preview)
+}

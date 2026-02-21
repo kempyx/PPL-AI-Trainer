@@ -98,3 +98,15 @@ struct MockExamSetupView: View {
         }
     }
 }
+
+#Preview {
+    let deps = Dependencies.preview
+    MockExamSetupView(
+        viewModel: MockExamViewModel(
+            databaseManager: deps.databaseManager,
+            mockExamEngine: deps.mockExamEngine,
+            settingsManager: deps.settingsManager
+        ),
+        leg: .technicalLegal
+    )
+}

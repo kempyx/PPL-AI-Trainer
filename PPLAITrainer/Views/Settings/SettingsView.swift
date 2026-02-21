@@ -531,3 +531,9 @@ struct SystemPromptEditor: View {
         }
     }
 }
+
+#Preview {
+    let deps = Dependencies.preview
+    SettingsView(viewModel: SettingsViewModel(keychainStore: deps.keychainStore, settingsManager: deps.settingsManager))
+        .environment(\.dependencies, deps)
+}

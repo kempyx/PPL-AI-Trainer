@@ -395,3 +395,8 @@ struct FlashcardView: View {
         }
     }
 }
+
+#Preview {
+    FlashcardView(sessionType: .quickReview)
+    .environment(\.dependencies, Dependencies.preview)
+}

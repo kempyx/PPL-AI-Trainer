@@ -36,3 +36,8 @@ struct QuestionOfTheDayView: View {
         }
     }
 }
+
+#Preview {
+    QuestionOfTheDayView()
+        .environment(\.dependencies, Dependencies.preview)
+}

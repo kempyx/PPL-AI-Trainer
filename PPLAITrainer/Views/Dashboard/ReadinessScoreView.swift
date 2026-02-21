@@ -100,3 +100,13 @@ private struct StatPill: View {
         .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
+
+#Preview {
+    ReadinessScoreView(
+        score: 75.5,
+        totalQuestions: 2681,
+        totalCorrect: 1850,
+        stats: StudyStats(answeredToday: 42, answeredThisWeek: 210, answeredAllTime: 2200, correctPercentage: 84.1)
+    )
+    .environment(\.dependencies, Dependencies.preview)
+}

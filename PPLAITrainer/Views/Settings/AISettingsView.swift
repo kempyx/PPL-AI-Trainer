@@ -159,3 +159,9 @@ struct AISettingsView: View {
         }
     }
 }
+
+#Preview {
+    let deps = Dependencies.preview
+    AISettingsView(viewModel: SettingsViewModel(keychainStore: deps.keychainStore, settingsManager: deps.settingsManager))
+        .environment(\.dependencies, deps)
+}

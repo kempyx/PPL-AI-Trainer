@@ -24,3 +24,7 @@ struct LoadingAnimationView: View {
         .padding()
     }
 }
+
+#Preview {
+    LoadingAnimationView(requestCount: 1)
+}

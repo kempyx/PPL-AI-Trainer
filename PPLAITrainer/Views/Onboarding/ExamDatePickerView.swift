@@ -89,3 +89,12 @@ struct ExamDatePickerView: View {
         .cornerRadius(AppCornerRadius.medium)
     }
 }
+
+#Preview {
+    ExamDatePickerView(
+        examDateLeg1: .constant(nil),
+        examDateLeg2: .constant(nil),
+        examDateLeg3: .constant(nil),
+        onContinue: {}
+    )
+}

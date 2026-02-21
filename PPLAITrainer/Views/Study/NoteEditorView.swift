@@ -75,3 +75,26 @@ struct NoteEditorView: View {
         dismiss()
     }
 }
+
+#Preview {
+    let sampleQuestion = Question(
+        id: 1,
+        category: 551,
+        code: "Q1",
+        text: "Sample question?",
+        correct: "A",
+        incorrect0: "B",
+        incorrect1: "C",
+        incorrect2: "D",
+        explanation: nil,
+        reference: nil,
+        attachments: nil,
+        mockonly: 0
+    )
+    NoteEditorView(
+        question: sampleQuestion,
+        existingNote: nil,
+        onSave: { _ in }
+    )
+    .environment(\.dependencies, Dependencies.preview)
+}

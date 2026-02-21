@@ -122,3 +122,12 @@ struct QuizPickerSheet: View {
         }
     }
 }
+
+#Preview {
+    QuizPickerSheet(
+        subjectName: "Sample Subject",
+        totalQuestions: 48,
+        onStart: { _ in }
+    )
+    .environment(\.dependencies, Dependencies.preview)
+}

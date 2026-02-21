@@ -43,3 +43,7 @@ struct FutureFeaturesHubView: View {
         return "PPLAITrainer summary: Daily goal \(goal), leaderboard opt-in: \(leaderboardOptIn ? "Yes" : "No")."
     }
 }
+
+#Preview {
+    FutureFeaturesHubView()
+}

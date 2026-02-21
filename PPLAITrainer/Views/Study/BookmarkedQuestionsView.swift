@@ -73,3 +73,8 @@ struct BookmarkedQuestionsView: View {
         bookmarkedQuestions.remove(atOffsets: offsets)
     }
 }
+
+#Preview {
+    BookmarkedQuestionsView()
+        .environment(\.dependencies, Dependencies.preview)
+}

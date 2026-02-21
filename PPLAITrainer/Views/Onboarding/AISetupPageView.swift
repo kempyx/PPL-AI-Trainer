@@ -39,3 +39,11 @@ struct AISetupPageView: View {
         .padding()
     }
 }
+
+#Preview {
+    AISetupPageView(
+        aiEnabled: .constant(true),
+        selectedProvider: .constant("openai"),
+        onContinue: {}
+    )
+}

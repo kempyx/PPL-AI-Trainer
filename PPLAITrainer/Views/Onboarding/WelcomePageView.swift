@@ -35,3 +35,7 @@ struct WelcomePageView: View {
         .padding()
     }
 }
+
+#Preview {
+    WelcomePageView(onContinue: {})
+}

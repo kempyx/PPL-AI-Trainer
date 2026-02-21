@@ -360,3 +360,14 @@ private struct MockExamScoreResultView: View {
         }
     }
 }
+
+#Preview {
+    let deps = Dependencies.preview
+    MockExamSessionView(
+        viewModel: MockExamViewModel(
+            databaseManager: deps.databaseManager,
+            mockExamEngine: deps.mockExamEngine,
+            settingsManager: deps.settingsManager
+        )
+    )
+}

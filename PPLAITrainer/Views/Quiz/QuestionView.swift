@@ -63,3 +63,32 @@ struct QuestionView: View {
         return uiImage
     }
 }
+
+#Preview {
+    let sampleQuestion = Question(
+        id: 1,
+        category: 551,
+        code: "Q1",
+        text: "Sample question?",
+        correct: "A",
+        incorrect0: "B",
+        incorrect1: "C",
+        incorrect2: "D",
+        explanation: "Sample explanation",
+        reference: nil,
+        attachments: nil,
+        mockonly: 0
+    )
+    let presented = PresentedQuestion(
+        question: sampleQuestion,
+        shuffledAnswers: ["A", "B", "C", "D"],
+        correctAnswerIndex: 0,
+        questionAttachments: [],
+        explanationAttachments: [],
+        categoryName: "Air Law"
+    )
+    QuestionView(
+        question: presented,
+        selectedAnswer: .constant(nil)
+    )
+}

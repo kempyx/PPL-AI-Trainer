@@ -244,3 +244,7 @@ struct QuizSessionView: View {
         )
     }
 }
+
+#Preview {
+    QuizSessionView(viewModel: Dependencies.preview.makeQuizViewModel())
+}

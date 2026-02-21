@@ -97,3 +97,20 @@ struct PostSessionSummaryView: View {
         }
     }
 }
+
+#Preview {
+    let summary = SessionSummary(
+        questionsAnswered: 10,
+        correctAnswers: 8,
+        accuracy: 0.8,
+        xpEarned: 120,
+        xpBreakdown: [("Correct answers", 80), ("Streak bonus", 40)],
+        currentStreak: 4,
+        categoryDeltas: [("Air Law", "+3%"), ("Meteorology", "+2%")],
+        suggestedAction: .continuePractice(remaining: 12)
+    )
+    PostSessionSummaryView(
+        summary: summary,
+        onReviewWrongAnswers: {}
+    )
+}

@@ -110,3 +110,11 @@ private struct CategoryDetailDestination: View {
         }
     }
 }
+
+#Preview {
+    CategoryProgressGrid(categories: [
+        CategoryProgress(id: 551, name: "Air Law", percentage: 82, totalQuestions: 120, answeredCorrectly: 98, answeredIncorrectly: 18),
+        CategoryProgress(id: 553, name: "Meteorology", percentage: 64, totalQuestions: 95, answeredCorrectly: 61, answeredIncorrectly: 22),
+    ])
+        .environment(\.dependencies, Dependencies.preview)
+}

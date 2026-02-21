@@ -53,3 +53,11 @@ struct OnboardingView: View {
         .ignoresSafeArea()
     }
 }
+
+#Preview {
+    OnboardingView(viewModel: OnboardingViewModel(
+        databaseManager: Dependencies.preview.databaseManager,
+        settingsManager: Dependencies.preview.settingsManager,
+        notificationService: Dependencies.preview.notificationService
+    )) {}
+}

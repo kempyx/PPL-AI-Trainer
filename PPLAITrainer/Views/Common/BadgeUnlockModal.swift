@@ -54,3 +54,10 @@ struct BadgeUnlockModal: View {
         }
     }
 }
+
+#Preview {
+    BadgeUnlockModal(
+        achievement: .firstSolo,
+        onDismiss: {}
+    )
+}

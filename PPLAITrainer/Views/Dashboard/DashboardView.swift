@@ -118,3 +118,12 @@ struct DashboardView: View {
             }
         }
     }
+
+#Preview {
+    let deps = Dependencies.preview
+    DashboardView(
+        viewModel: DashboardViewModel(databaseManager: deps.databaseManager, settingsManager: deps.settingsManager),
+        studyViewModel: StudyViewModel(databaseManager: deps.databaseManager)
+    )
+    .environment(\.dependencies, deps)
+}

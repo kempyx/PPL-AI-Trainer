@@ -113,3 +113,15 @@ struct MockExamView: View {
         }
     }
 }
+
+#Preview {
+    let deps = Dependencies.preview
+    MockExamView(
+        viewModel: MockExamViewModel(
+            databaseManager: deps.databaseManager,
+            mockExamEngine: deps.mockExamEngine,
+            settingsManager: deps.settingsManager
+        )
+    )
+    .environment(\.dependencies, deps)
+}
