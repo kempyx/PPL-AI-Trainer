@@ -1,5 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
 import UIKit
+#endif
 
 struct ResultView: View {
     @State var viewModel: QuizViewModel
@@ -240,7 +242,7 @@ struct ResultView: View {
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Copy") {
-                            UIPasteboard.general.string = visualPromptText
+                            copyVisualPromptToClipboard()
                         }
                     }
                 }
@@ -254,6 +256,12 @@ struct ResultView: View {
         }
     }
     
+    private func copyVisualPromptToClipboard() {
+        #if canImport(UIKit)
+        UIPasteboard.general.string = visualPromptText
+        #endif
+    }
+
     private func toggleBookmark() {
         guard let deps = dependencies else { return }
         do {
