@@ -242,7 +242,10 @@ struct QuizSessionView: View {
 
     private var quizActionRail: some View {
         VStack(spacing: 8) {
-            if viewModel.settingsManager.aiEnabled, let selected = viewModel.selectedExplainText, !selected.isEmpty {
+            if viewModel.settingsManager.aiEnabled,
+               viewModel.isFloatingExplainEnabled,
+               let selected = viewModel.selectedExplainText,
+               !selected.isEmpty {
                 Button {
                     viewModel.explainSelectedText()
                 } label: {
@@ -262,7 +265,9 @@ struct QuizSessionView: View {
                 .accessibilityHint("Ask AI to explain the selected aviation term in context")
             }
 
-            if viewModel.settingsManager.aiEnabled, !viewModel.hasSubmitted {
+            if viewModel.settingsManager.aiEnabled,
+               viewModel.isPreSubmitHintEnabled,
+               !viewModel.hasSubmitted {
                 Button {
                     viewModel.getQuestionHint()
                 } label: {

@@ -29,6 +29,14 @@ final class QuizViewModel {
     var isLoadingInlineAI: Bool = false
     var selectedExplainText: String? = nil
     
+    var isPreSubmitHintEnabled: Bool {
+        settingsManager.experimentVariant(for: .hintTiming) == "pre_submit_hint"
+    }
+    
+    var isFloatingExplainEnabled: Bool {
+        settingsManager.experimentVariant(for: .contextualExplainEntry) == "floating_cta"
+    }
+    
     enum AIRequestType: String {
         case explain = "explain"
         case simplify = "simplify"
@@ -126,7 +134,11 @@ final class QuizViewModel {
             }
             questions = try rawQuestions.shuffled().map { try createPresentedQuestion(from: $0) }
             if !questions.isEmpty {
-                logInteractionEvent(name: "quiz_session_started", questionId: nil, metadata: "questionCount=\(questions.count)")
+                logInteractionEvent(
+                    name: "quiz_session_started",
+                    questionId: nil,
+                    metadata: "questionCount=\(questions.count);hint=\(isPreSubmitHintEnabled ? "pre_submit_hint" : "control");explain=\(isFloatingExplainEnabled ? "floating_cta" : "control")"
+                )
             }
         } catch {
             questions = []

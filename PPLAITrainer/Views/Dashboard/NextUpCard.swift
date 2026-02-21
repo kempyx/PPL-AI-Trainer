@@ -41,8 +41,10 @@ struct NextUpCard: View {
                         Text(actionText(for: rec))
                     }
                     .buttonStyle(PrimaryButtonStyle())
+                    .accessibilityHint("Starts the recommended next study action")
                 }
                 .cardStyle()
+                .accessibilityElement(children: .contain)
             }
         }
         .task {
@@ -76,6 +78,15 @@ struct NextUpCard: View {
     
     private func loadRecommendation() async {
         guard let deps = dependencies else { return }
+        let masteryFirst = deps.settingsManager.experimentVariant(for: .dashboardNextUpPriority) == "mastery_first"
+        if !masteryFirst {
+            if let dueCards = try? deps.databaseManager.fetchDueCards(limit: nil), !dueCards.isEmpty {
+                setRecommendation(.reviewSRS(count: dueCards.count), deps: deps)
+            } else {
+                setRecommendation(.continueStudying(subject: "Your studies"), deps: deps)
+            }
+            return
+        }
         if let dueCards = try? deps.databaseManager.fetchDueCards(limit: nil), !dueCards.isEmpty {
             setRecommendation(.reviewSRS(count: dueCards.count), deps: deps)
             return
@@ -102,7 +113,7 @@ struct NextUpCard: View {
         try? deps.databaseManager.logInteractionEvent(
             name: "dashboard_nextup_recommendation",
             questionId: nil,
-            metadata: "type=\(title(for: rec))"
+            metadata: "type=\(title(for: rec));variant=\(deps.settingsManager.experimentVariant(for: .dashboardNextUpPriority))"
         )
     }
     

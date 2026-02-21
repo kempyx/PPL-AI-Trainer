@@ -79,6 +79,7 @@ class MockDatabaseManager: DatabaseManaging {
     func searchQuestions(query: String, limit: Int) throws -> [Question] { [] }
     func saveQuestionReport(questionId: Int64, reason: String, details: String?) throws {}
     func logInteractionEvent(name: String, questionId: Int64?, metadata: String?) throws {}
+    func fetchInteractionEventCounts(from: Date) throws -> [String : Int] { [:] }
     func fetchMnemonicCount() throws -> Int { 0 }
     func fetchConsecutiveCorrectStreak(limit: Int) throws -> Int { 0 }
     func fetchTimesWrong(questionId: Int64) throws -> Int { 0 }

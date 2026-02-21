@@ -6,6 +6,26 @@ struct SettingsView: View {
     @State private var showResetConfirmation = false
     @State private var showLegSuggestion = false
     @State private var dismissedSuggestion: ExamLeg?
+    @State private var kpiSnapshot: KPISnapshot?
+
+    private struct KPISnapshot {
+        let windowDays: Int
+        let activeDays: Int
+        let goalHitDays: Int
+        let answeredQuestions: Int
+        let sessionStarts: Int
+        let sessionCompletions: Int
+        let hintRequests: Int
+        let contextualExplainRequests: Int
+        let inlineAIRequests: Int
+        let mockExamCompletions: Int
+        let wrongQueueCount: Int
+
+        var completionRate: Double {
+            guard sessionStarts > 0 else { return 0 }
+            return Double(sessionCompletions) / Double(sessionStarts)
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -16,6 +36,8 @@ struct SettingsView: View {
                     appearanceCard
                     feedbackCard
                     aiAssistantCard
+                    productMetricsCard
+                    experimentsCard
                     dangerZoneCard
                 }
                 .padding()
@@ -60,6 +82,7 @@ struct SettingsView: View {
         }
         .onAppear {
             checkLegSuggestion()
+            refreshKPISnapshot()
         }
     }
 
@@ -357,6 +380,94 @@ struct SettingsView: View {
         }
     }
 
+    private var productMetricsCard: some View {
+        SettingsCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    SettingsSectionHeader(icon: "chart.xyaxis.line", title: "Product Metrics (7d)", color: .blue)
+                    Spacer()
+                    Button("Refresh") {
+                        refreshKPISnapshot()
+                    }
+                    .font(.caption.weight(.semibold))
+                }
+
+                if let kpiSnapshot {
+                    metricRow("Active study days", value: "\(kpiSnapshot.activeDays)/\(kpiSnapshot.windowDays)")
+                    metricRow("Goal hit days", value: "\(kpiSnapshot.goalHitDays)")
+                    metricRow("Questions answered", value: "\(kpiSnapshot.answeredQuestions)")
+                    metricRow("Quiz completion", value: "\(Int(kpiSnapshot.completionRate * 100))%")
+                    metricRow("Hint requests", value: "\(kpiSnapshot.hintRequests)")
+                    metricRow("Context explain", value: "\(kpiSnapshot.contextualExplainRequests)")
+                    metricRow("Inline AI requests", value: "\(kpiSnapshot.inlineAIRequests)")
+                    metricRow("Mock exams done", value: "\(kpiSnapshot.mockExamCompletions)")
+                    metricRow("Wrong-answer queue", value: "\(kpiSnapshot.wrongQueueCount)")
+                } else {
+                    Text("No metrics yet. Complete a few sessions to populate this panel.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var experimentsCard: some View {
+        SettingsCard {
+            VStack(alignment: .leading, spacing: 12) {
+                SettingsSectionHeader(icon: "slider.horizontal.3", title: "Experiments (QA)", color: .orange)
+
+                ForEach(AppExperiment.allCases) { experiment in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(experiment.title)
+                            .font(.subheadline.weight(.semibold))
+                        Text("Assigned: \(viewModel.settingsManager.experimentVariant(for: experiment))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Menu {
+                            Button("Auto") {
+                                viewModel.settingsManager.setExperimentOverride(nil, for: experiment)
+                            }
+                            ForEach(experiment.variants, id: \.self) { variant in
+                                Button(variant) {
+                                    viewModel.settingsManager.setExperimentOverride(variant, for: experiment)
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                Text("Override: \(viewModel.settingsManager.experimentOverride(for: experiment) ?? "Auto")")
+                                    .font(.caption.weight(.medium))
+                                Spacer()
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(10)
+                            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: AppCornerRadius.small))
+                        }
+                    }
+                }
+
+                Button("Clear All Overrides") {
+                    viewModel.settingsManager.clearExperimentOverrides()
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.orange)
+            }
+        }
+    }
+
+    private func metricRow(_ label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.caption)
+            Spacer()
+            Text(value)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+        }
+    }
+
     @State private var showResetProgressConfirmation = false
     @State private var resetConfirmationText = ""
 
@@ -368,6 +479,37 @@ struct SettingsView: View {
         deps.gamificationService.resetSession()
         NotificationCenter.default.post(name: .didResetProgress, object: nil)
         resetConfirmationText = ""
+        refreshKPISnapshot()
+    }
+
+    private func refreshKPISnapshot() {
+        guard let deps = dependencies else { return }
+        let windowDays = 7
+        let fromDate = Calendar.current.date(byAdding: .day, value: -(windowDays - 1), to: Date()) ?? Date()
+        let formatter = DateFormatter.yyyyMMdd
+        let from = formatter.string(from: fromDate)
+        let to = formatter.string(from: Date())
+
+        let eventCounts = (try? deps.databaseManager.fetchInteractionEventCounts(from: fromDate)) ?? [:]
+        let studyDays = (try? deps.databaseManager.fetchStudyDays(from: from, to: to)) ?? []
+        let answeredQuestions = studyDays.reduce(0) { $0 + $1.questionsAnswered }
+        let goalTarget = max(viewModel.settingsManager.dailyGoalTarget, 1)
+        let goalHitDays = studyDays.filter { $0.questionsAnswered >= goalTarget }.count
+        let wrongQueueCount = (try? deps.databaseManager.fetchWrongAnswerQuestionIds().count) ?? 0
+
+        kpiSnapshot = KPISnapshot(
+            windowDays: windowDays,
+            activeDays: studyDays.count,
+            goalHitDays: goalHitDays,
+            answeredQuestions: answeredQuestions,
+            sessionStarts: eventCounts["quiz_session_started"] ?? 0,
+            sessionCompletions: eventCounts["quiz_session_completed"] ?? 0,
+            hintRequests: eventCounts["quiz_hint_requested"] ?? 0,
+            contextualExplainRequests: eventCounts["quiz_contextual_explain_requested"] ?? 0,
+            inlineAIRequests: eventCounts["quiz_inline_ai_requested"] ?? 0,
+            mockExamCompletions: eventCounts["mock_exam_completed"] ?? 0,
+            wrongQueueCount: wrongQueueCount
+        )
     }
 
     private var dangerZoneCard: some View {

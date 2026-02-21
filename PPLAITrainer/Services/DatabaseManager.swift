@@ -98,6 +98,7 @@ protocol DatabaseManaging {
     
     // Interaction analytics
     func logInteractionEvent(name: String, questionId: Int64?, metadata: String?) throws
+    func fetchInteractionEventCounts(from: Date) throws -> [String: Int]
     
     // Gamification helpers
     func fetchMnemonicCount() throws -> Int
@@ -849,6 +850,28 @@ final class DatabaseManager: DatabaseManaging {
                 sql: "INSERT INTO interaction_events (name, questionId, metadata, createdAt) VALUES (?, ?, ?, ?)",
                 arguments: [name, questionId, metadata, Date()]
             )
+        }
+    }
+
+    func fetchInteractionEventCounts(from: Date) throws -> [String: Int] {
+        try dbQueue.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT name, COUNT(*) AS count
+                    FROM interaction_events
+                    WHERE createdAt >= ?
+                    GROUP BY name
+                """,
+                arguments: [from]
+            )
+            var counts: [String: Int] = [:]
+            for row in rows {
+                let name: String = row["name"]
+                let count: Int = row["count"]
+                counts[name] = count
+            }
+            return counts
         }
     }
     
