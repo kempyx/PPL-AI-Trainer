@@ -55,10 +55,12 @@ If this section conflicts with historical status tables below, **this section wi
 | 6 | RESTORE-8 | Category progress parity regression check | [ ] TODO | Verify Dashboard and Study progress semantics remain aligned |
 
 **Execution protocol for this queue:**
-1. Open one PR per task (no multi-task PRs).
-2. Update this table immediately after finishing each task (`[ ] TODO` → `[x] DONE`).
-3. Keep `UI_UX_AUDIT.md` in every PR so cloud agents always see latest task state.
-4. Run `./scripts/check.sh` before marking a task done.
+1. Use one long-lived branch for the full Active Queue (e.g., `codex/active-queue-full`).
+2. Use one PR for the full Active Queue (open as Draft early; mark ready after all tasks are done).
+3. Make exactly one commit per task (`feat(<TASK-ID>): <summary>`), then push after each task.
+4. Update this table immediately after finishing each task (`[ ] TODO` -> `[x] DONE`) with a brief evidence note.
+5. Keep `UI_UX_AUDIT.md` in each task commit so cloud agents always see current queue state.
+6. Run `./scripts/check.sh` before marking a task done.
 
 ---
 
