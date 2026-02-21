@@ -29,6 +29,15 @@ struct Dependencies {
             soundService: soundService
         )
     }
+
+    var isSelectedAIProviderConfigured: Bool {
+        guard settingsManager.aiEnabled else { return false }
+        let provider = AIProviderType(rawValue: settingsManager.selectedProvider) ?? .openai
+        guard let apiKey = try? keychainStore.read(provider: provider.rawValue) else {
+            return false
+        }
+        return !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 }
 
 private struct DependenciesKey: EnvironmentKey {

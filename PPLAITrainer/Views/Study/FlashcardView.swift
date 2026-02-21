@@ -35,7 +35,7 @@ struct FlashcardView: View {
                     .accessibilityLabel("Toggle card orientation")
                 }
             }
-            if let vm = viewModel, vm.isRevealed, vm.settingsManager.aiEnabled {
+            if let vm = viewModel, vm.isRevealed, isAIAvailable {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         vm.aiConversation?.showAISheet = true
@@ -67,6 +67,10 @@ struct FlashcardView: View {
         }
     }
     
+    private var isAIAvailable: Bool {
+        dependencies?.isSelectedAIProviderConfigured == true
+    }
+
     // MARK: - Card Stack
     
     private func cardStack(viewModel: FlashcardViewModel, question: Question) -> some View {

@@ -118,7 +118,7 @@ struct ResultView: View {
                     }
                 }
 
-                if viewModel.settingsManager.aiEnabled, let selectedExplainText, !selectedExplainText.isEmpty {
+                if isAIAvailable, let selectedExplainText, !selectedExplainText.isEmpty {
                     Button {
                         viewModel.updateSelectedExplainText(selectedExplainText)
                         viewModel.explainSelectedText()
@@ -136,7 +136,7 @@ struct ResultView: View {
                     .buttonStyle(SecondaryButtonStyle())
                 }
                 
-                if viewModel.settingsManager.aiEnabled {
+                if isAIAvailable {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("AI help is a study aid. Use the official explanation above as your source of truth.")
                             .font(.caption)
@@ -184,7 +184,7 @@ struct ResultView: View {
                     }
                 }
                 
-                if viewModel.settingsManager.aiEnabled && viewModel.selectedAnswer != question.correctAnswerIndex {
+                if isAIAvailable && viewModel.selectedAnswer != question.correctAnswerIndex {
                     VStack(alignment: .leading, spacing: 12) {
                         if viewModel.aiHint == nil && !viewModel.isLoadingHint {
                             Button {
@@ -217,7 +217,7 @@ struct ResultView: View {
                 }
                 
 
-                if viewModel.settingsManager.aiEnabled {
+                if isAIAvailable {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Visual Prompt Generator")
                             .font(.headline)
@@ -242,7 +242,7 @@ struct ResultView: View {
                     }
                 }
 
-                if !viewModel.settingsManager.aiEnabled && viewModel.selectedAnswer != question.correctAnswerIndex {
+                if !isAIAvailable && viewModel.selectedAnswer != question.correctAnswerIndex {
                     aiTeaser
                 }
                 
@@ -293,6 +293,10 @@ struct ResultView: View {
         }
     }
     
+    private var isAIAvailable: Bool {
+        dependencies?.isSelectedAIProviderConfigured == true
+    }
+
     private func toggleBookmark() {
         guard let deps = dependencies else { return }
         do {
