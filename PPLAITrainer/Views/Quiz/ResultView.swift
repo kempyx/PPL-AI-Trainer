@@ -131,6 +131,10 @@ struct ResultView: View {
                 
                 if viewModel.settingsManager.aiEnabled {
                     VStack(alignment: .leading, spacing: 12) {
+                        Text("AI help is a study aid. Use the official explanation above as your source of truth.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
                         HStack(spacing: 8) {
                             ForEach([QuizViewModel.AIRequestType.explain, .simplify, .analogy, .commonMistakes], id: \.self) { type in
                                 Button {

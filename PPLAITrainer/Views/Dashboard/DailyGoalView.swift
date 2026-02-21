@@ -28,6 +28,10 @@ struct DailyGoalView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundColor(isComplete ? .green : .primary)
             }
+
+            Text(goalMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
             
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
@@ -53,6 +57,19 @@ struct DailyGoalView: View {
         }
         .padding()
         .cardStyle()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Daily goal")
+        .accessibilityValue("\(answeredToday) of \(target) complete")
+        .accessibilityHint(goalMessage)
+    }
+
+    private var goalMessage: String {
+        guard target > 0 else { return "Set a daily target in Settings to track consistency." }
+        if isComplete {
+            return "Goal complete. Keep going for extra retention practice."
+        }
+        let remaining = target - answeredToday
+        return "\(remaining) more question\(remaining == 1 ? "" : "s") to stay on track today."
     }
 }
 

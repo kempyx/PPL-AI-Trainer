@@ -152,6 +152,13 @@ struct AIConversationSheet: View {
     
     private var quickActions: some View {
         VStack(spacing: 10) {
+            Text("AI responses are for study support. Verify with the official explanation and syllabus references.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+                .padding(.top, 8)
+            
             Text("How can I help?")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -184,6 +191,7 @@ struct AIConversationSheet: View {
         }
         .buttonStyle(.bordered)
         .tint(color)
+        .accessibilityHint("Sends a guided AI request")
     }
     
     // MARK: - Chat Bubble

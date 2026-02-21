@@ -258,6 +258,8 @@ struct QuizSessionView: View {
                 }
                 .buttonStyle(SecondaryButtonStyle())
                 .padding(.horizontal)
+                .accessibilityLabel("Explain selected text")
+                .accessibilityHint("Ask AI to explain the selected aviation term in context")
             }
 
             if viewModel.settingsManager.aiEnabled, !viewModel.hasSubmitted {
@@ -271,6 +273,8 @@ struct QuizSessionView: View {
                 }
                 .buttonStyle(SecondaryButtonStyle())
                 .padding(.horizontal)
+                .accessibilityLabel("Get hint")
+                .accessibilityHint("Get guidance without revealing the answer")
 
                 if viewModel.isLoadingHint {
                     ProgressView()
@@ -306,6 +310,7 @@ struct QuizSessionView: View {
                 }
                 .disabled(viewModel.selectedAnswer == nil)
                 .padding(.horizontal)
+                .accessibilityHint("Submit your selected answer")
             }
         }
         .padding(.bottom, 8)

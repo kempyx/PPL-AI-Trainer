@@ -38,8 +38,10 @@ final class NotificationService {
     
     private func scheduleDailyReviewReminder(dueCardCount: Int) {
         let content = UNMutableNotificationContent()
-        content.title = "Time to Study"
-        content.body = "You have \(dueCardCount) cards due for review"
+        content.title = "Daily PPL Review"
+        content.body = dueCardCount > 0
+            ? "You have \(dueCardCount) due card\(dueCardCount == 1 ? "" : "s"). A 10-minute review keeps retention high."
+            : "No due cards yet. Run a quick weak-area drill to stay exam-ready."
         content.sound = .default
         
         let components = Calendar.current.dateComponents([.hour, .minute], from: settingsManager.reminderTime)
@@ -51,8 +53,8 @@ final class NotificationService {
     
     private func scheduleStreakProtection(currentStreak: Int) {
         let content = UNMutableNotificationContent()
-        content.title = "Don't Break Your Streak!"
-        content.body = "You're on a \(currentStreak)-day streak. Study today to keep it going!"
+        content.title = "Keep Your Study Rhythm"
+        content.body = "You're on a \(currentStreak)-day run. A short session today protects recall before exam day."
         content.sound = .default
         
         var components = DateComponents()
@@ -66,8 +68,8 @@ final class NotificationService {
     
     private func scheduleDailyGoalNudge(progress: Double) {
         let content = UNMutableNotificationContent()
-        content.title = "Daily Goal Reminder"
-        content.body = "You're \(Int(progress * 100))% of the way to your daily goal"
+        content.title = "Goal Progress Update"
+        content.body = "You're \(Int(progress * 100))% of today's goal. Finish with a focused quiz set."
         content.sound = .default
         
         var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
@@ -82,7 +84,7 @@ final class NotificationService {
     private func scheduleExamCountdown(daysUntilExam: Int) {
         let content = UNMutableNotificationContent()
         content.title = "Exam Countdown"
-        content.body = "\(daysUntilExam) days until your exam. Keep studying!"
+        content.body = "\(daysUntilExam) day\(daysUntilExam == 1 ? "" : "s") until your exam. Prioritize weak subjects this week."
         content.sound = .default
         
         var components = DateComponents()
