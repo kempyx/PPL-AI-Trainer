@@ -15,6 +15,15 @@ struct CategoryStat {
     let totalQuestions: Int
     let answeredQuestions: Int
     let correctAnswers: Int
+
+    var accuracyPercentage: Double {
+        guard totalQuestions > 0 else { return 0 }
+        return Double(correctAnswers) / Double(totalQuestions) * 100
+    }
+
+    var incorrectAnswers: Int {
+        max(0, answeredQuestions - correctAnswers)
+    }
 }
 
 struct CategoryWithStats {

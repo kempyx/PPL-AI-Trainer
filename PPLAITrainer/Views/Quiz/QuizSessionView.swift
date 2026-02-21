@@ -133,6 +133,7 @@ struct QuizSessionView: View {
                     if viewModel.currentIndex > 0 {
                         viewModel.previousQuestion()
                     } else {
+                        persistSessionState()
                         dismiss()
                     }
                 } label: {
@@ -165,7 +166,10 @@ struct QuizSessionView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
-            viewModel.saveSessionState(categoryId: nil, categoryName: nil)
+            persistSessionState()
+        }
+        .onDisappear {
+            persistSessionState()
         }
     }
 
@@ -241,5 +245,13 @@ struct QuizSessionView: View {
             categoryDeltas: [],
             suggestedAction: .continuePractice(remaining: 0)
         )
+    }
+
+    private func persistSessionState() {
+        if viewModel.isQuizComplete {
+            viewModel.clearSavedSession()
+        } else {
+            viewModel.saveSessionState(categoryId: nil, categoryName: nil)
+        }
     }
 }

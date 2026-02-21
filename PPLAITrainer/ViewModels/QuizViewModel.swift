@@ -25,8 +25,10 @@ final class QuizViewModel {
     var aiMnemonic: String? = nil
     var aiHint: String? = nil
     var isLoadingHint: Bool = false
+    var isHintFromCache: Bool = false
     var aiInlineResponse: String? = nil
     var isLoadingInlineAI: Bool = false
+    var lastInlineAIType: AIRequestType? = nil
     
     enum AIRequestType: String {
         case explain = "explain"
@@ -229,8 +231,10 @@ final class QuizViewModel {
         aiMnemonic = nil
         aiHint = nil
         isLoadingHint = false
+        isHintFromCache = false
         aiInlineResponse = nil
         isLoadingInlineAI = false
+        lastInlineAIType = nil
         showCorrectFlash = false
         showIncorrectFlash = false
         aiConversation?.chatMessages = []
@@ -244,8 +248,10 @@ final class QuizViewModel {
         aiMnemonic = nil
         aiHint = nil
         isLoadingHint = false
+        isHintFromCache = false
         aiInlineResponse = nil
         isLoadingInlineAI = false
+        lastInlineAIType = nil
         showCorrectFlash = false
         showIncorrectFlash = false
         aiConversation?.chatMessages = []
@@ -290,10 +296,12 @@ final class QuizViewModel {
         // Check cache first
         if let cached = try? databaseManager.fetchAIResponse(questionId: current.question.id, responseType: "hint") {
             aiHint = cached.response
+            isHintFromCache = true
             return
         }
         
         isLoadingHint = true
+        isHintFromCache = false
         Task { @MainActor in
             do {
                 let hintPrompt = """
@@ -308,6 +316,7 @@ final class QuizViewModel {
                 D. \(current.shuffledAnswers[3])
                 
                 Correct answer: \(current.shuffledAnswers[current.correctAnswerIndex])
+                \(attachmentPromptContext(for: current))
                 
                 Provide a helpful hint that guides the student toward the correct answer without stating it explicitly.
                 """
@@ -317,6 +326,7 @@ final class QuizViewModel {
                 
                 let response = try await aiService.sendChat(messages: messages)
                 aiHint = response
+                isHintFromCache = false
                 
                 // Cache the response
                 let cache = AIResponseCache(
@@ -331,6 +341,7 @@ final class QuizViewModel {
                 isLoadingHint = false
             } catch {
                 aiHint = "Unable to generate hint. Please try again."
+                isHintFromCache = false
                 isLoadingHint = false
             }
         }
@@ -338,6 +349,7 @@ final class QuizViewModel {
     
     func requestInlineAI(type: AIRequestType) {
         guard let current = currentQuestion else { return }
+        lastInlineAIType = type
         
         // Check cache first
         if let cached = try? databaseManager.fetchAIResponse(questionId: current.question.id, responseType: type.rawValue) {
@@ -361,6 +373,7 @@ final class QuizViewModel {
                 D. \(current.shuffledAnswers[3])
                 
                 Correct answer: \(current.shuffledAnswers[current.correctAnswerIndex])
+                \(attachmentPromptContext(for: current))
                 
                 \(current.question.explanation ?? "")
                 """
@@ -394,6 +407,21 @@ final class QuizViewModel {
         }
     }
     
+    private func attachmentPromptContext(for question: PresentedQuestion) -> String {
+        var lines: [String] = []
+        if !question.questionAttachments.isEmpty {
+            let filenames = question.questionAttachments.map(\.filename).joined(separator: ", ")
+            lines.append("Question diagram(s): \(filenames)")
+        }
+        if !question.explanationAttachments.isEmpty {
+            let filenames = question.explanationAttachments.map(\.filename).joined(separator: ", ")
+            lines.append("Explanation diagram(s): \(filenames)")
+        }
+
+        guard !lines.isEmpty else { return "" }
+        return "\nReference attached visual context when relevant:\n\(lines.joined(separator: "\n"))"
+    }
+
     // MARK: - Visual Prompt Generation
     
     enum VisualPromptType {
@@ -403,25 +431,33 @@ final class QuizViewModel {
     
     func generateVisualPrompt(type: VisualPromptType) -> String {
         guard let current = currentQuestion else { return "" }
-        
-        let mediaType = type == .image ? "image" : "video"
-        let systemContext = "You are an experienced flight instructor creating visual learning materials."
-        
-        let prompt = """
-        \(systemContext)
-        
-        Create a detailed prompt for generating a \(mediaType) that illustrates the following aviation concept:
-        
+
+        let mediaGuidance: String
+        switch type {
+        case .image:
+            mediaGuidance = "Create one static training visual with labeled callouts, high contrast, and no decorative text."
+        case .video:
+            mediaGuidance = "Create a short training storyboard (3-5 scenes) with camera framing, motion cues, and timing notes."
+        }
+
+        return """
+        You are an experienced flight instructor creating visual learning materials for student pilots.
+
+        Build a production-ready \(type == .image ? "image" : "video") generation prompt using this information:
+
         Question: \(current.question.text)
-        
         Correct Answer: \(current.shuffledAnswers[current.correctAnswerIndex])
-        
-        \(current.question.explanation ?? "")
-        
-        The \(mediaType) should help a student pilot understand this concept visually. Focus on cockpit diagrams, flight paths, instrument readings, or other relevant aviation visuals.
+        \(attachmentPromptContext(for: current))
+
+        Explanation context:
+        \(current.question.explanation ?? "No explanation provided.")
+
+        Requirements:
+        - \(mediaGuidance)
+        - Prioritize aviation accuracy over style.
+        - Include cockpit/instrument/environment details relevant to the concept.
+        - Avoid adding facts that conflict with the provided question/explanation.
         """
-        
-        return prompt
     }
     
     // MARK: - Session Persistence

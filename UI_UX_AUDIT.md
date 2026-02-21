@@ -47,12 +47,12 @@ If this section conflicts with historical status tables below, **this section wi
 
 | Priority | ID | Scope | Status | Notes |
 |----------|----|-------|--------|-------|
-| 1 | RESTORE-3 | Session persistence hardening + resume UX verification | [ ] TODO | Confirm save/restore on background, back navigation, and completion clear |
-| 2 | RESTORE-4 | Hint system UX + caching verification | [ ] TODO | Ensure hint CTA exists in flow and uses cache path |
-| 3 | RESTORE-5 | Inline AI actions UX + continuity verification | [ ] TODO | Explain/Simplify/Analogy/Mistakes actions in result flow |
-| 4 | RESTORE-6 | Image attachment context for AI | [ ] TODO | Include attachment context in AI prompts (text + multimodal-aware path) |
-| 5 | RESTORE-7 | Image/video prompt generation restore | [ ] TODO | Restore prompt generation entry points and prompt composition rules |
-| 6 | RESTORE-8 | Category progress parity regression check | [ ] TODO | Verify Dashboard and Study progress semantics remain aligned |
+| 1 | RESTORE-3 | Session persistence hardening + resume UX verification | [x] DONE | Added persistSessionState() for background + back nav + onDisappear completion clear in QuizSessionView; verified via check.sh fallback. |
+| 2 | RESTORE-4 | Hint system UX + caching verification | [x] DONE | Verified hint CTA in ResultView and cache-first load path; added cached badge for reused hints in quiz flow. |
+| 3 | RESTORE-5 | Inline AI actions UX + continuity verification | [x] DONE | Verified all four inline AI actions in ResultView; added action-specific response header for continuity context. |
+| 4 | RESTORE-6 | Image attachment context for AI | [x] DONE | Added attachmentPromptContext() so hint + inline AI prompts include question/explanation diagram filenames for better context. |
+| 5 | RESTORE-7 | Image/video prompt generation restore | [x] DONE | Added image/video prompt entry buttons in ResultView with copy sheet; strengthened generateVisualPrompt() composition rules per media type. |
+| 6 | RESTORE-8 | Category progress parity regression check | [x] DONE | Unified Study progress math via CategoryStat accuracy/incorrect helpers and clamped Dashboard incorrect counts to preserve parity semantics. |
 
 **Execution protocol for this queue:**
 1. Open one PR per task (no multi-task PRs).

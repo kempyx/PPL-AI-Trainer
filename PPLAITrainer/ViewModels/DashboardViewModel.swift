@@ -144,7 +144,7 @@ final class DashboardViewModel {
 
             categoryProgress = all.map { entry in
                 let pct = entry.totalQuestions > 0 ? Double(entry.correctAnswers) / Double(entry.totalQuestions) * 100 : 0
-                let incorrect = entry.answeredQuestions - entry.correctAnswers
+                let incorrect = max(0, entry.answeredQuestions - entry.correctAnswers)
                 return CategoryProgress(
                     id: entry.id,
                     name: entry.name,

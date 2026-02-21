@@ -90,7 +90,7 @@ private struct DisplayCategoryCard: View {
                 QuizProgressBar(
                     total: item.stats.totalQuestions,
                     correct: item.stats.correctAnswers,
-                    incorrect: item.stats.answeredQuestions - item.stats.correctAnswers
+                    incorrect: item.stats.incorrectAnswers
                 )
             }
 
@@ -138,15 +138,15 @@ private struct DisplayCategoryCard: View {
 
     private var progressPercentage: String {
         guard item.stats.totalQuestions > 0 else { return "—" }
-        let pct = Double(item.stats.correctAnswers) / Double(item.stats.totalQuestions) * 100
+        let pct = item.stats.accuracyPercentage
         return "\(Int(pct))%"
     }
 
     private var progressColor: Color {
         guard item.stats.totalQuestions > 0, item.stats.answeredQuestions > 0 else { return .secondary }
-        let pct = Double(item.stats.correctAnswers) / Double(item.stats.totalQuestions)
-        if pct >= 0.75 { return .green }
-        if pct >= 0.5 { return .orange }
+        let pct = item.stats.accuracyPercentage
+        if pct >= 75 { return .green }
+        if pct >= 50 { return .orange }
         return .red
     }
 }
@@ -177,7 +177,7 @@ private struct MemberCategoryCard: View {
                 QuizProgressBar(
                     total: item.stats.totalQuestions,
                     correct: item.stats.correctAnswers,
-                    incorrect: item.stats.answeredQuestions - item.stats.correctAnswers
+                    incorrect: item.stats.incorrectAnswers
                 )
             }
 
@@ -224,15 +224,15 @@ private struct MemberCategoryCard: View {
 
     private var progressPercentage: String {
         guard item.stats.totalQuestions > 0 else { return "—" }
-        let pct = Double(item.stats.correctAnswers) / Double(item.stats.totalQuestions) * 100
+        let pct = item.stats.accuracyPercentage
         return "\(Int(pct))%"
     }
 
     private var progressColor: Color {
         guard item.stats.totalQuestions > 0, item.stats.answeredQuestions > 0 else { return .secondary }
-        let pct = Double(item.stats.correctAnswers) / Double(item.stats.totalQuestions)
-        if pct >= 0.75 { return .green }
-        if pct >= 0.5 { return .orange }
+        let pct = item.stats.accuracyPercentage
+        if pct >= 75 { return .green }
+        if pct >= 50 { return .orange }
         return .red
     }
 }

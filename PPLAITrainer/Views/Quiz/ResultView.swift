@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ResultView: View {
     @State var viewModel: QuizViewModel
@@ -8,6 +9,9 @@ struct ResultView: View {
     @State private var showNoteEditor = false
     @State private var note: Note?
     @State private var showReportSheet = false
+    @State private var visualPromptTitle = ""
+    @State private var visualPromptText = ""
+    @State private var showVisualPromptSheet = false
     
     var body: some View {
         ScrollView {
@@ -118,7 +122,7 @@ struct ResultView: View {
                         
                         if let response = viewModel.aiInlineResponse {
                             VStack(alignment: .leading) {
-                                Text("AI Response")
+                                Text(viewModel.lastInlineAIType.map { "AI Response · \($0.buttonLabel)" } ?? "AI Response")
                                     .font(.headline)
                                 Text(response)
                                     .textSelection(.enabled)
@@ -162,9 +166,16 @@ struct ResultView: View {
                         }
                         
                         if let hint = viewModel.aiHint {
-                            VStack(alignment: .leading) {
-                                Text("Hint")
-                                    .font(.headline)
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text("Hint")
+                                        .font(.headline)
+                                    if viewModel.isHintFromCache {
+                                        Label("Cached", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
                                 Text(hint)
                                     .textSelection(.enabled)
                                     .padding()
@@ -175,6 +186,28 @@ struct ResultView: View {
                     }
                 }
                 
+                if viewModel.settingsManager.aiEnabled {
+                    HStack(spacing: 10) {
+                        Button {
+                            visualPromptTitle = "Image Prompt"
+                            visualPromptText = viewModel.generateVisualPrompt(type: .image)
+                            showVisualPromptSheet = true
+                        } label: {
+                            Label("Image Prompt", systemImage: "photo")
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+
+                        Button {
+                            visualPromptTitle = "Video Prompt"
+                            visualPromptText = viewModel.generateVisualPrompt(type: .video)
+                            showVisualPromptSheet = true
+                        } label: {
+                            Label("Video Prompt", systemImage: "video")
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                    }
+                }
+
                 if !viewModel.settingsManager.aiEnabled && viewModel.selectedAnswer != question.correctAnswerIndex {
                     aiTeaser
                 }
@@ -193,6 +226,25 @@ struct ResultView: View {
         }
         .sheet(isPresented: $showReportSheet) {
             QuestionReportSheet(question: question.question)
+        }
+        .sheet(isPresented: $showVisualPromptSheet) {
+            NavigationStack {
+                ScrollView {
+                    Text(visualPromptText)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                }
+                .navigationTitle(visualPromptTitle)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Copy") {
+                            UIPasteboard.general.string = visualPromptText
+                        }
+                    }
+                }
+            }
         }
         .onAppear {
             if let deps = dependencies {
