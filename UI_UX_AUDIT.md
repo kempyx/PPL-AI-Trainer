@@ -52,7 +52,7 @@ If this section conflicts with historical status tables below, **this section wi
 | 3 | RESTORE-5 | Inline AI actions UX + continuity verification | [x] DONE | Verified `ResultView` exposes Explain/Simplify/Analogy/Mistakes buttons and `requestInlineAI` appends responses into shared AI conversation history |
 | 4 | RESTORE-6 | Image attachment context for AI | [x] DONE | Extended quiz AI context to include attachment filenames plus base64 data-URL payloads for vision-capable models (`gemini-3`/`gpt-4.x`) |
 | 5 | RESTORE-7 | Image/video prompt generation restore | [x] DONE | Added "Generate Image"/"Generate Video" actions in `ResultView` with copyable prompt sheet powered by `QuizViewModel.generateVisualPrompt` |
-| 6 | RESTORE-8 | Category progress parity regression check | [ ] TODO | Verify Dashboard and Study progress semantics remain aligned |
+| 6 | RESTORE-8 | Category progress parity regression check | [x] DONE | Swapped Dashboard category row bar to shared `QuizProgressBar` for the same correct/incorrect/unanswered semantics used in Study |
 
 **Execution protocol for this queue:**
 1. Use one long-lived branch for the full Active Queue (e.g., `codex/active-queue-full`).
