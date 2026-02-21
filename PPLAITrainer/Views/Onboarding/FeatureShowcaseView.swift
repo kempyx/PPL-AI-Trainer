@@ -6,18 +6,21 @@ struct FeatureShowcaseView: View {
     
     private let features = [
         Feature(
+            id: 0,
             icon: "brain.head.profile",
             color: .purple,
             title: "Smart Spaced Repetition",
             description: "Questions you struggle with appear more often. Master them and they'll space out automatically."
         ),
         Feature(
+            id: 1,
             icon: "sparkles",
             color: .blue,
             title: "AI-Powered Explanations",
             description: "Get instant explanations for any question. Choose from OpenAI, Google Gemini, Grok, or Apple Intelligence."
         ),
         Feature(
+            id: 2,
             icon: "chart.line.uptrend.xyaxis",
             color: .green,
             title: "Track Your Progress",
@@ -30,9 +33,9 @@ struct FeatureShowcaseView: View {
             Spacer()
             
             TabView(selection: $currentPage) {
-                ForEach(features.indices, id: \.self) { index in
-                    FeatureCard(feature: features[index])
-                        .tag(index)
+                ForEach(features) { feature in
+                    FeatureCard(feature: feature)
+                        .tag(feature.id)
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .always))
@@ -62,7 +65,8 @@ struct FeatureShowcaseView: View {
     }
 }
 
-struct Feature {
+struct Feature: Identifiable {
+    let id: Int
     let icon: String
     let color: Color
     let title: String
