@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ResultView: View {
     @State var viewModel: QuizViewModel
@@ -8,6 +9,8 @@ struct ResultView: View {
     @State private var showNoteEditor = false
     @State private var note: Note?
     @State private var showReportSheet = false
+    @State private var visualPromptText = ""
+    @State private var showVisualPromptSheet = false
     
     var body: some View {
         ScrollView {
@@ -175,6 +178,32 @@ struct ResultView: View {
                     }
                 }
                 
+
+                if viewModel.settingsManager.aiEnabled {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Visual Prompt Generator")
+                            .font(.headline)
+
+                        HStack(spacing: 10) {
+                            Button {
+                                visualPromptText = viewModel.generateVisualPrompt(type: .image)
+                                showVisualPromptSheet = true
+                            } label: {
+                                Label("Generate Image", systemImage: "photo")
+                            }
+                            .buttonStyle(SecondaryButtonStyle())
+
+                            Button {
+                                visualPromptText = viewModel.generateVisualPrompt(type: .video)
+                                showVisualPromptSheet = true
+                            } label: {
+                                Label("Generate Video", systemImage: "video")
+                            }
+                            .buttonStyle(SecondaryButtonStyle())
+                        }
+                    }
+                }
+
                 if !viewModel.settingsManager.aiEnabled && viewModel.selectedAnswer != question.correctAnswerIndex {
                     aiTeaser
                 }
@@ -193,6 +222,24 @@ struct ResultView: View {
         }
         .sheet(isPresented: $showReportSheet) {
             QuestionReportSheet(question: question.question)
+        }
+        .sheet(isPresented: $showVisualPromptSheet) {
+            NavigationStack {
+                ScrollView {
+                    Text(visualPromptText)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                }
+                .navigationTitle("Visual Prompt")
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Copy") {
+                            UIPasteboard.general.string = visualPromptText
+                        }
+                    }
+                }
+            }
         }
         .onAppear {
             if let deps = dependencies {
