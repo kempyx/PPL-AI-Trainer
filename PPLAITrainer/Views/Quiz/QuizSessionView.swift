@@ -133,6 +133,7 @@ struct QuizSessionView: View {
                     if viewModel.currentIndex > 0 {
                         viewModel.previousQuestion()
                     } else {
+                        viewModel.saveSessionState(categoryId: nil, categoryName: nil)
                         dismiss()
                     }
                 } label: {
