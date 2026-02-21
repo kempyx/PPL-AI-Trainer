@@ -8,6 +8,7 @@ private let logger = Logger(subsystem: "com.pplaitrainer", category: "QuizViewMo
 final class QuizViewModel {
     private let databaseManager: DatabaseManaging
     private let srsEngine: SRSEngine
+    private let aiService: AIServiceProtocol
     let settingsManager: SettingsManager
     let gamificationService: GamificationService
     private let hapticService: HapticService
@@ -79,6 +80,7 @@ final class QuizViewModel {
     init(databaseManager: DatabaseManaging, srsEngine: SRSEngine, aiService: AIServiceProtocol, settingsManager: SettingsManager, gamificationService: GamificationService, hapticService: HapticService, soundService: SoundService) {
         self.databaseManager = databaseManager
         self.srsEngine = srsEngine
+        self.aiService = aiService
         self.settingsManager = settingsManager
         self.gamificationService = gamificationService
         self.hapticService = hapticService
@@ -313,7 +315,7 @@ final class QuizViewModel {
                 let messages = [ChatMessage(role: .system, content: settingsManager.systemPrompt),
                                ChatMessage(role: .user, content: hintPrompt)]
                 
-                let response = try await aiConversation?.aiService.sendChat(messages: messages) ?? ""
+                let response = try await aiService.sendChat(messages: messages)
                 aiHint = response
                 
                 // Cache the response
@@ -367,7 +369,7 @@ final class QuizViewModel {
                 let messages = [ChatMessage(role: .system, content: settingsManager.systemPrompt),
                                ChatMessage(role: .user, content: prompt)]
                 
-                let response = try await aiConversation?.aiService.sendChat(messages: messages) ?? ""
+                let response = try await aiService.sendChat(messages: messages)
                 aiInlineResponse = response
                 
                 // Add to conversation history

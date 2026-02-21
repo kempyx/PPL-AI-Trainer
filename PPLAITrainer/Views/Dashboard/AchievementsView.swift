@@ -2,16 +2,16 @@ import SwiftUI
 
 struct AchievementsView: View {
     @Environment(\.dependencies) private var deps
-    @State private var achievements: [Achievement] = []
+    @State private var achievements: [AchievementDefinition] = AchievementDefinition.allCases
     @State private var unlockedIds: Set<String> = []
     
     var body: some View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 150))], spacing: 16) {
-                ForEach(achievements) { achievement in
+                ForEach(achievements, id: \.rawValue) { achievement in
                     AchievementCard(
                         achievement: achievement,
-                        isUnlocked: unlockedIds.contains(achievement.id)
+                        isUnlocked: unlockedIds.contains(achievement.rawValue)
                     )
                 }
             }
@@ -25,29 +25,29 @@ struct AchievementsView: View {
     
     private func loadAchievements() {
         guard let deps = deps else { return }
-        achievements = Achievement.allAchievements
-        unlockedIds = Set((try? deps.databaseManager.fetchUnlockedAchievements().map(\.id)) ?? [])
+        achievements = AchievementDefinition.allCases
+        unlockedIds = Set((try? deps.databaseManager.fetchAchievements().map(\.id)) ?? [])
     }
 }
 
 struct AchievementCard: View {
-    let achievement: Achievement
+    let achievement: AchievementDefinition
     let isUnlocked: Bool
     
     var body: some View {
         VStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(isUnlocked ? achievement.color.opacity(0.2) : Color(.systemGray6))
+                    .fill(isUnlocked ? Color.yellow.opacity(0.2) : Color(.systemGray6))
                     .frame(width: 80, height: 80)
                 
                 Image(systemName: achievement.icon)
                     .font(.system(size: 36))
-                    .foregroundColor(isUnlocked ? achievement.color : .secondary)
+                    .foregroundColor(isUnlocked ? .yellow : .secondary)
             }
             
             VStack(spacing: 4) {
-                Text(achievement.title)
+                Text(achievement.displayName)
                     .font(.subheadline.weight(.semibold))
                     .multilineTextAlignment(.center)
                     .foregroundColor(isUnlocked ? .primary : .secondary)
@@ -57,12 +57,6 @@ struct AchievementCard: View {
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
-            }
-            
-            if !isUnlocked {
-                ProgressView(value: achievement.progress, total: 1.0)
-                    .tint(.blue)
-                    .padding(.horizontal, 8)
             }
         }
         .padding()

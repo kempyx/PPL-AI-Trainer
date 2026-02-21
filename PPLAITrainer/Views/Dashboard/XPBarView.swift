@@ -31,7 +31,7 @@ struct XPBarView: View {
                     Text(currentLevel.title)
                         .font(.headline)
                     if let next = nextLevel {
-                        Text("\(totalXP) / \(next.requiredXP) XP to \(next.title)")
+                        Text("\(totalXP) / \(next.minXP) XP to \(next.title)")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     } else {

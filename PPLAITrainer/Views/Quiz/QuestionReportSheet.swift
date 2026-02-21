@@ -97,14 +97,16 @@ struct QuestionReportSheet: View {
 #Preview {
     QuestionReportSheet(question: Question(
         id: 1,
+        category: 551,
         code: "TEST",
-        category: "Test",
         text: "Test question",
         correct: "A",
         incorrect0: "B",
         incorrect1: "C",
         incorrect2: "D",
         explanation: "Test",
-        attachments: nil
+        reference: nil,
+        attachments: nil,
+        mockonly: 0
     ))
 }

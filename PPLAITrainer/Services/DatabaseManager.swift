@@ -93,6 +93,9 @@ protocol DatabaseManaging {
     // Search
     func searchQuestions(query: String, limit: Int) throws -> [Question]
     
+    // Question reports
+    func saveQuestionReport(questionId: Int64, reason: String, details: String?) throws
+    
     // Gamification helpers
     func fetchMnemonicCount() throws -> Int
     func fetchConsecutiveCorrectStreak(limit: Int) throws -> Int
@@ -229,6 +232,16 @@ final class DatabaseManager: DatabaseManaging {
                 t.column("createdAt", .datetime).notNull()
             }
             try db.create(index: "idx_ai_cache_question_type", on: "ai_response_cache", columns: ["questionId", "responseType"], unique: true)
+        }
+        
+        migrator.registerMigration("v9-question-reports") { db in
+            try db.create(table: "question_reports") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("questionId", .integer).notNull().indexed()
+                t.column("reason", .text).notNull()
+                t.column("details", .text)
+                t.column("createdAt", .datetime).notNull()
+            }
         }
 
         try migrator.migrate(dbQueue)
@@ -781,6 +794,15 @@ final class DatabaseManager: DatabaseManaging {
                 WHERE text LIKE ? OR correct LIKE ? OR incorrect0 LIKE ? OR incorrect1 LIKE ? OR incorrect2 LIKE ?
                 LIMIT ?
             """, arguments: [pattern, pattern, pattern, pattern, pattern, limit])
+        }
+    }
+    
+    func saveQuestionReport(questionId: Int64, reason: String, details: String?) throws {
+        try dbQueue.write { db in
+            try db.execute(
+                sql: "INSERT INTO question_reports (questionId, reason, details, createdAt) VALUES (?, ?, ?, ?)",
+                arguments: [questionId, reason, details, Date()]
+            )
         }
     }
     

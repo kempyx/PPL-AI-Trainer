@@ -9,7 +9,7 @@ struct ExamReviewView: View {
         var grouped: [String: [(PresentedQuestion, Bool)]] = [:]
         
         for question in questions {
-            let categoryName = question.question.category
+            let categoryName = question.categoryName
             let studentAnswer = answers[question.question.id] ?? ""
             let isCorrect = studentAnswer == question.question.correct
             
@@ -102,7 +102,7 @@ struct QuestionReviewRow: View {
                         .padding(.top, 4)
                     }
                     
-                    if !question.question.explanation.isEmpty {
+                    if let explanation = question.question.explanation, !explanation.isEmpty {
                         Button {
                             withAnimation { isExpanded.toggle() }
                         } label: {
@@ -116,7 +116,7 @@ struct QuestionReviewRow: View {
                         }
                         
                         if isExpanded {
-                            Text(question.question.explanation)
+                            Text(explanation)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .padding(.top, 4)

@@ -253,19 +253,15 @@ struct ResultView: View {
     }
     
     private func makeAttributedString(from text: String) -> AttributedString {
-        var attributedString = AttributedString(text)
+        let mutable = NSMutableAttributedString(string: text)
         if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
-            let matches = detector.matches(in: text, range: NSRange(text.startIndex..., in: text))
-            for match in matches {
-                if let range = Range(match.range, in: text) {
-                    let attributedRange = AttributedString(text[range]).range
-                    if let url = match.url, let attrRange = attributedRange {
-                        attributedString[attrRange].link = url
-                    }
-                }
+            let fullRange = NSRange(location: 0, length: (text as NSString).length)
+            detector.enumerateMatches(in: text, options: [], range: fullRange) { match, _, _ in
+                guard let match, let url = match.url else { return }
+                mutable.addAttribute(.link, value: url, range: match.range)
             }
         }
-        return attributedString
+        return (try? AttributedString(mutable, including: \.uiKit)) ?? AttributedString(text)
     }
     
     private func loadBundleUIImage(filename: String) -> UIImage? {

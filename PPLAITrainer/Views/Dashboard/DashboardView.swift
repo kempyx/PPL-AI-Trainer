@@ -116,4 +116,3 @@ struct DashboardView: View {
             }
         }
     }
-}

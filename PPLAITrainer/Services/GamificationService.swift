@@ -19,6 +19,7 @@ final class GamificationService {
     var didLevelUp: Bool = false
     var previousLevel: PilotLevel?
     private(set) var consecutiveCorrectInSession: Int = 0
+    var currentStreak: Int { (try? databaseManager.fetchCurrentStreak()) ?? 0 }
     
     init(databaseManager: DatabaseManaging, settingsManager: SettingsManager) {
         self.databaseManager = databaseManager

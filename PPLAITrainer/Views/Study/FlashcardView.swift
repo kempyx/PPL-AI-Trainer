@@ -185,7 +185,7 @@ struct FlashcardView: View {
             }
             .padding(.horizontal, 60)
             .padding(.bottom, 16)
-            .opacity(viewModel.isFlipped ? 1 : 0)
+            .opacity(viewModel.isRevealed ? 1 : 0)
         }
     }
     
