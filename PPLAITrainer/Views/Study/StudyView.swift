@@ -3,6 +3,8 @@ import SwiftUI
 struct StudyView: View {
     @State private var viewModel: StudyViewModel
     @Environment(\.dependencies) private var deps
+    @State private var savedSession: QuizSessionState? = nil
+    @State private var showResumeConfirmation = false
     
     init(viewModel: StudyViewModel) {
         self.viewModel = viewModel
@@ -18,6 +20,37 @@ struct StudyView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
+                    // Resume session banner
+                    if let session = savedSession {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Resume Quiz")
+                                    .font(.subheadline.weight(.semibold))
+                                Text("\(session.currentIndex + 1) of \(session.questionIds.split(separator: ",").count) questions")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Button("Resume") {
+                                if let deps = deps {
+                                    let vm = deps.makeQuizViewModel()
+                                    vm.restoreSession(from: session)
+                                    // Navigate to quiz
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            Button {
+                                showResumeConfirmation = true
+                            } label: {
+                                Image(systemName: "xmark")
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .padding()
+                        .background(Color.blue.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal)
+                    }
+                    
                     // QUICK START
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Quick Start")
@@ -94,8 +127,24 @@ struct StudyView: View {
             }
             .onAppear { 
                 viewModel.loadTopLevelCategories()
+                loadSavedSession()
+            }
+            .alert("Discard saved session?", isPresented: $showResumeConfirmation) {
+                Button("Cancel", role: .cancel) {}
+                Button("Discard", role: .destructive) {
+                    try? deps?.databaseManager.clearQuizSession()
+                    savedSession = nil
+                }
+            } message: {
+                if let session = savedSession {
+                    Text("You've answered \(session.currentIndex) of \(session.questionIds.split(separator: ",").count) questions.")
+                }
             }
         }
+    }
+    
+    private func loadSavedSession() {
+        savedSession = try? deps?.databaseManager.loadQuizSession()
     }
     
     // MARK: - Components
