@@ -32,7 +32,7 @@ struct ExamReviewView: View {
             List {
                 ForEach(groupedQuestions, id: \.category) { group in
                     Section {
-                        ForEach(Array(group.questions.enumerated()), id: \.offset) { index, item in
+                        ForEach(group.questions, id: \.question.question.id) { item in
                             QuestionReviewRow(
                                 question: item.question,
                                 studentAnswer: answers[item.question.question.id] ?? "",
