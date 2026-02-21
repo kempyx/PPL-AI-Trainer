@@ -246,12 +246,6 @@ struct ResultView: View {
                     aiTeaser
                 }
                 
-                Button("Next Question") {
-                    selectedExplainText = nil
-                    viewModel.updateSelectedExplainText(nil)
-                    viewModel.nextQuestion()
-                }
-                .buttonStyle(PrimaryButtonStyle())
             }
             .padding()
         }
