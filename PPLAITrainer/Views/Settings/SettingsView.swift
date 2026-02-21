@@ -33,12 +33,16 @@ struct SettingsView: View {
                 Text("This will delete all stored API keys.")
             }
             .alert("Reset All Progress?", isPresented: $showResetProgressConfirmation) {
-                Button("Cancel", role: .cancel) {}
+                TextField("Type RESET to confirm", text: $resetConfirmationText)
+                Button("Cancel", role: .cancel) {
+                    resetConfirmationText = ""
+                }
                 Button("Reset", role: .destructive) {
                     resetProgress()
                 }
+                .disabled(resetConfirmationText != "RESET")
             } message: {
-                Text("This will erase all XP, achievements, streaks, bookmarks, notes, answer history, and SRS progress. Your question bank and AI settings will be kept.")
+                Text("This will erase all XP, achievements, streaks, bookmarks, notes, answer history, and SRS progress. Type RESET to confirm.")
             }
             .alert("Switch to \(viewModel.suggestedLeg?.shortTitle ?? "")?", isPresented: $showLegSuggestion) {
                 Button("Not Now", role: .cancel) {
@@ -354,18 +358,31 @@ struct SettingsView: View {
     }
 
     @State private var showResetProgressConfirmation = false
+    @State private var resetConfirmationText = ""
 
     private func resetProgress() {
         guard let deps = dependencies else { return }
+        guard resetConfirmationText == "RESET" else { return }
         try? deps.databaseManager.resetAllProgress()
         deps.settingsManager.resetUserProgress()
         deps.gamificationService.resetSession()
         NotificationCenter.default.post(name: .didResetProgress, object: nil)
+        resetConfirmationText = ""
     }
 
     private var dangerZoneCard: some View {
         SettingsCard {
-            VStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Danger Zone")
+                    .font(.headline)
+                    .foregroundColor(.red)
+                
+                Text("These actions cannot be undone")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Divider()
+                
                 Button(role: .destructive) {
                     showResetProgressConfirmation = true
                 } label: {

@@ -22,6 +22,23 @@ struct DashboardView: View {
     private var dashboardContent: some View {
         ScrollView {
                 VStack(spacing: 20) {
+                    // Streak at risk banner
+                    if viewModel.currentStreak > 0 && viewModel.answeredToday == 0 {
+                        HStack {
+                            Image(systemName: "flame.fill")
+                                .foregroundColor(.orange)
+                            Text("Your \(viewModel.currentStreak)-day streak is at risk!")
+                                .font(.subheadline.weight(.medium))
+                            Spacer()
+                            Text("Study now")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(.orange)
+                        }
+                        .padding()
+                        .background(Color.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal)
+                    }
+                    
                     // ACTION ZONE (always visible)
                     ReadinessScoreView(
                         score: viewModel.readinessScore,

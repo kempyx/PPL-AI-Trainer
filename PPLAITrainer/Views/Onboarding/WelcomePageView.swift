@@ -8,15 +8,15 @@ struct WelcomePageView: View {
             Spacer()
             
             Image(systemName: "airplane")
-                .font(.system(size: 80))
+                .font(.system(size: 60))
                 .foregroundStyle(.blue)
             
             VStack(spacing: 12) {
                 Text("PPL AI Trainer")
-                    .font(.largeTitle.weight(.bold))
+                    .font(.title.weight(.bold))
                 
                 Text("Your personal pilot exam study companion")
-                    .font(.title3)
+                    .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }

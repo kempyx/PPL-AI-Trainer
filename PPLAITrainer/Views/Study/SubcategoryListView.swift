@@ -190,6 +190,25 @@ private struct SubcategoryRow: View {
                     .multilineTextAlignment(.leading)
 
                 Spacer(minLength: 8)
+                
+                // Status badges
+                HStack(spacing: 4) {
+                    if isMastered {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.caption)
+                    }
+                    if hasDueReview {
+                        Image(systemName: "circle.fill")
+                            .foregroundColor(.orange)
+                            .font(.system(size: 8))
+                    }
+                    if hasWrongAnswers {
+                        Image(systemName: "circle.fill")
+                            .foregroundColor(.red)
+                            .font(.system(size: 8))
+                    }
+                }
 
                 if item.stats.answeredQuestions > 0 {
                     Text(progressPercentage)
@@ -219,6 +238,21 @@ private struct SubcategoryRow: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color(.secondarySystemGroupedBackground))
+    }
+    
+    private var isMastered: Bool {
+        guard item.stats.totalQuestions > 0 else { return false }
+        let pct = Double(item.stats.correctAnswers) / Double(item.stats.totalQuestions) * 100
+        return pct >= 90
+    }
+    
+    private var hasDueReview: Bool {
+        // Simplified - would need SRS data
+        return false
+    }
+    
+    private var hasWrongAnswers: Bool {
+        return item.stats.answeredQuestions > item.stats.correctAnswers
     }
 
     private var progressPercentage: String {

@@ -20,6 +20,7 @@ class FlashcardViewModel {
     var sessionComplete = false
     var totalRevealed = 0
     var totalCorrect = 0
+    var reverseMode = false // Question on back, answer on front
     
     // Swipe state
     var dragOffset: CGSize = .zero

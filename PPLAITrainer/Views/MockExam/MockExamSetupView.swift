@@ -11,6 +11,22 @@ struct MockExamSetupView: View {
                 .font(.largeTitle)
                 .bold()
             
+            // Readiness indicator
+            if let readiness = viewModel.legReadiness {
+                HStack {
+                    Image(systemName: readiness < 60 ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                        .foregroundColor(readiness < 60 ? .orange : .green)
+                    Text("Readiness: \(Int(readiness))%")
+                        .font(.subheadline.weight(.medium))
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(readiness < 60 ? Color.orange.opacity(0.15) : Color.green.opacity(0.15))
+                .cornerRadius(8)
+                .padding(.horizontal)
+            }
+            
             Picker("Mode", selection: $isPracticeMode) {
                 Text("Timed Exam").tag(false)
                 Text("Practice").tag(true)

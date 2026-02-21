@@ -15,14 +15,7 @@ struct SearchView: View {
                         NavigationLink {
                             QuestionDetailView(question: question)
                         } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(question.text)
-                                    .font(.body)
-                                    .lineLimit(2)
-                                Text(question.code)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
+                            SearchResultRow(question: question, searchText: searchText)
                         }
                     }
                 }
@@ -285,6 +278,71 @@ struct StandaloneAISheet: View {
             } catch {
                 isLoading = false
             }
+        }
+    }
+}
+
+private struct SearchResultRow: View {
+    @Environment(\.dependencies) private var dependencies
+    let question: Question
+    let searchText: String
+    @State private var categoryName: String?
+    @State private var attemptStatus: String?
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(highlightedText(question.text))
+                .font(.body)
+                .lineLimit(2)
+            
+            HStack(spacing: 8) {
+                if let categoryName {
+                    Text(categoryName)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                if let attemptStatus {
+                    Text(attemptStatus)
+                        .font(.caption)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(statusColor.opacity(0.2))
+                        .foregroundColor(statusColor)
+                        .cornerRadius(4)
+                }
+                
+                Text(question.code)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .task {
+            loadMetadata()
+        }
+    }
+    
+    private var statusColor: Color {
+        if attemptStatus == "Correct" { return .green }
+        if attemptStatus == "Wrong" { return .red }
+        return .secondary
+    }
+    
+    private func highlightedText(_ text: String) -> AttributedString {
+        var attributed = AttributedString(text)
+        if let range = attributed.range(of: searchText, options: .caseInsensitive) {
+            attributed[range].font = .body.bold()
+        }
+        return attributed
+    }
+    
+    private func loadMetadata() {
+        guard let deps = dependencies else { return }
+        categoryName = try? deps.databaseManager.fetchCategoryStats(categoryId: question.category).categoryName
+        
+        if let history = try? deps.databaseManager.fetchAnswerHistory(questionId: question.id), !history.isEmpty {
+            let lastAttempt = history.last!
+            attemptStatus = lastAttempt.isCorrect ? "Correct" : "Wrong"
         }
     }
 }

@@ -4,8 +4,17 @@ struct OnboardingView: View {
     @Bindable var viewModel: OnboardingViewModel
     var onComplete: () -> Void
     
+    private let totalPages = 4
+    
     var body: some View {
-        TabView(selection: $viewModel.currentPage) {
+        VStack(spacing: 0) {
+            // Progress indicator
+            ProgressView(value: Double(viewModel.currentPage + 1), total: Double(totalPages))
+                .tint(.blue)
+                .padding(.horizontal)
+                .padding(.top, 8)
+            
+            TabView(selection: $viewModel.currentPage) {
             WelcomePageView(onContinue: { viewModel.nextPage() })
                 .tag(0)
             
@@ -25,22 +34,15 @@ struct OnboardingView: View {
                 recommendedGoal: viewModel.recommendedGoal,
                 onContinue: {
                     viewModel.requestNotifications()
-                    viewModel.nextPage()
-                }
-            )
-            .tag(3)
-            
-            OnboardingResultsView(
-                percentage: viewModel.baselinePercentage,
-                onFinish: {
                     viewModel.completeOnboarding()
                     onComplete()
                 }
             )
-            .tag(4)
+            .tag(3)
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
         .animation(.easeInOut, value: viewModel.currentPage)
+        }
         .ignoresSafeArea()
     }
 }

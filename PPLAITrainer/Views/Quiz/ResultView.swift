@@ -19,16 +19,19 @@ struct ResultView: View {
                     } label: {
                         Image(systemName: "flag")
                     }
+                    .accessibilityLabel("Report question")
                     Button {
                         showNoteEditor = true
                     } label: {
                         Image(systemName: note != nil ? "note.text" : "note.text.badge.plus")
                     }
+                    .accessibilityLabel(note != nil ? "Edit note" : "Add note")
                     Button {
                         toggleBookmark()
                     } label: {
                         Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
                     }
+                    .accessibilityLabel(isBookmarked ? "Remove bookmark" : "Add bookmark")
                 }
                 
                 Text(question.question.text)

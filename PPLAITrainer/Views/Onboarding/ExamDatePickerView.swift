@@ -23,7 +23,7 @@ struct ExamDatePickerView: View {
             Text("When are your exams?")
                 .font(.title.weight(.bold))
             
-            Text("Swedish PPL exams are split into 3 legs (optional)")
+            Text("EASA PPL exams are split into 3 legs (optional)")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             

@@ -25,6 +25,7 @@ final class MockExamViewModel {
     var examHistory: [MockExamResult] = []
     var currentScore: MockExamScore? = nil
     var isPracticeMode: Bool = false
+    var legReadiness: Double? = nil
     
     private var timer: AnyCancellable?
     
@@ -51,6 +52,17 @@ final class MockExamViewModel {
     @MainActor
     private func startExamAsync(leg: ExamLeg) async {
         do {
+            // Calculate readiness
+            let categoryIds = leg.parentCategoryIds
+            var totalCorrect = 0
+            var totalQuestions = 0
+            for categoryId in categoryIds {
+                let stats = try databaseManager.fetchAggregatedCategoryStats(parentId: categoryId)
+                totalCorrect += stats.correctAnswers
+                totalQuestions += stats.totalQuestions
+            }
+            legReadiness = totalQuestions > 0 ? Double(totalCorrect) / Double(totalQuestions) * 100 : 0
+            
             let rawQuestions = try mockExamEngine.generateExam(leg: leg)
             logger.info("Loaded \(rawQuestions.count) questions for \(leg.title)")
             

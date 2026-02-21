@@ -21,11 +21,19 @@ struct QuizSessionView: View {
         ZStack(alignment: .bottomTrailing) {
             VStack(spacing: 0) {
                 if let current = viewModel.currentQuestion {
-                    // Progress Bar
-                    ProgressView(value: Double(viewModel.currentIndex + 1), total: Double(viewModel.questions.count))
-                        .tint(.blue)
-                        .padding(.horizontal)
-                        .padding(.top, 8)
+                    // Segmented Progress Bar
+                    GeometryReader { geo in
+                        HStack(spacing: 2) {
+                            ForEach(0..<viewModel.questions.count, id: \.self) { index in
+                                Rectangle()
+                                    .fill(segmentColor(for: index))
+                                    .frame(height: 4)
+                            }
+                        }
+                    }
+                    .frame(height: 4)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
                     
                     // Stats Row
                     HStack {
@@ -109,6 +117,7 @@ struct QuizSessionView: View {
                         )
                         .shadow(color: .purple.opacity(0.4), radius: 8, y: 4)
                 }
+                .accessibilityLabel("Ask AI about this question")
                 .padding(.trailing, 20)
                 .padding(.bottom, 20)
                 .transition(.scale.combined(with: .opacity))
@@ -206,6 +215,16 @@ struct QuizSessionView: View {
         }
         .sheet(isPresented: $showSummary) {
             PostSessionSummaryView(summary: buildSessionSummary())
+        }
+    }
+    
+    private func segmentColor(for index: Int) -> Color {
+        if index < viewModel.answerHistory.count {
+            return viewModel.answerHistory[index] ? .green : .red
+        } else if index == viewModel.currentIndex {
+            return .blue
+        } else {
+            return Color(.systemGray5)
         }
     }
     

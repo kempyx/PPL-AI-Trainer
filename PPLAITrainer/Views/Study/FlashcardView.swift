@@ -25,6 +25,16 @@ struct FlashcardView: View {
         .navigationTitle("Flashcards")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            if let vm = viewModel {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        vm.reverseMode.toggle()
+                    } label: {
+                        Image(systemName: "arrow.2.squarepath")
+                    }
+                    .accessibilityLabel("Toggle card orientation")
+                }
+            }
             if let vm = viewModel, vm.isRevealed, vm.settingsManager.aiEnabled {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -154,6 +164,7 @@ struct FlashcardView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Mark as don't know")
                 
                 Spacer()
                 
@@ -170,6 +181,7 @@ struct FlashcardView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Mark as know it")
             }
             .padding(.horizontal, 60)
             .padding(.bottom, 16)
@@ -184,6 +196,9 @@ struct FlashcardView: View {
         let tintColor: Color = swipeProgress > 0 ? .green : .red
         let tintOpacity = min(abs(swipeProgress), 1.0) * 0.15
         
+        let frontText = viewModel.reverseMode ? question.correct : question.text
+        let showChoices = viewModel.reverseMode ? !viewModel.isRevealed : viewModel.isRevealed
+        
         return ZStack {
             RoundedRectangle(cornerRadius: 20)
                 .fill(.regularMaterial)
@@ -195,34 +210,36 @@ struct FlashcardView: View {
             
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text(question.text)
+                    Text(frontText)
                         .font(.headline)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     
-                    Divider()
-                    
-                    // Choices
-                    let choices = viewModel.choicesForCurrent()
-                    ForEach(Array(choices.enumerated()), id: \.offset) { index, choice in
-                        HStack(spacing: 10) {
-                            let letter = ["A", "B", "C", "D"][index]
-                            if viewModel.isRevealed && choice == question.correct {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
-                                    .transition(.scale.combined(with: .opacity))
-                            } else {
-                                Text(letter)
-                                    .font(.caption.weight(.semibold))
-                                    .frame(width: 24, height: 24)
-                                    .background(Circle().fill(Color(.systemGray5)))
+                    if showChoices {
+                        Divider()
+                        
+                        // Choices
+                        let choices = viewModel.choicesForCurrent()
+                        ForEach(Array(choices.enumerated()), id: \.offset) { index, choice in
+                            HStack(spacing: 10) {
+                                let letter = ["A", "B", "C", "D"][index]
+                                if viewModel.isRevealed && choice == question.correct {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.green)
+                                        .transition(.scale.combined(with: .opacity))
+                                } else {
+                                    Text(letter)
+                                        .font(.caption.weight(.semibold))
+                                        .frame(width: 24, height: 24)
+                                        .background(Circle().fill(Color(.systemGray5)))
+                                }
+                                
+                                Text(choice)
+                                    .font(.subheadline)
+                                    .textSelection(.enabled)
+                                    .foregroundStyle(viewModel.isRevealed && choice == question.correct ? .green : .primary)
+                                    .fontWeight(viewModel.isRevealed && choice == question.correct ? .semibold : .regular)
                             }
-                            
-                            Text(choice)
-                                .font(.subheadline)
-                                .textSelection(.enabled)
-                                .foregroundStyle(viewModel.isRevealed && choice == question.correct ? .green : .primary)
-                                .fontWeight(viewModel.isRevealed && choice == question.correct ? .semibold : .regular)
                         }
                     }
                     

@@ -19,6 +19,7 @@ final class QuizViewModel {
     var hasSubmitted: Bool = false
     var questionsAnswered: Int = 0
     var correctCount: Int = 0
+    var answerHistory: [Bool] = [] // Track correct/incorrect for each question
     
     var aiMnemonic: String? = nil
     var aiHint: String? = nil
@@ -141,6 +142,7 @@ final class QuizViewModel {
         guard let selectedAnswer = selectedAnswer, let current = currentQuestion else { return }
         hasSubmitted = true
         let isCorrect = selectedAnswer == current.correctAnswerIndex
+        answerHistory.append(isCorrect)
         if isCorrect { 
             correctCount += 1
             showCorrectFlash = true
@@ -338,6 +340,9 @@ final class QuizViewModel {
         // Check cache first
         if let cached = try? databaseManager.fetchAIResponse(questionId: current.question.id, responseType: type.rawValue) {
             aiInlineResponse = cached.response
+            // Add to conversation history
+            aiConversation?.chatMessages.append(ChatMessage(role: .user, content: type.prompt))
+            aiConversation?.chatMessages.append(ChatMessage(role: .assistant, content: cached.response))
             return
         }
         
@@ -364,6 +369,10 @@ final class QuizViewModel {
                 
                 let response = try await aiConversation?.aiService.sendChat(messages: messages) ?? ""
                 aiInlineResponse = response
+                
+                // Add to conversation history
+                aiConversation?.chatMessages.append(ChatMessage(role: .user, content: type.prompt))
+                aiConversation?.chatMessages.append(ChatMessage(role: .assistant, content: response))
                 
                 // Cache the response
                 let cache = AIResponseCache(

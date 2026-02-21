@@ -9,9 +9,9 @@ class OnboardingViewModel {
     private let logger = Logger(subsystem: "com.pplaitrainer", category: "Onboarding")
     
     var currentPage = 0
-    var examDateLeg1: Date?
-    var examDateLeg2: Date?
-    var examDateLeg3: Date?
+    var examDateLeg1: Date? = Calendar.current.date(byAdding: .month, value: 3, to: Date())
+    var examDateLeg2: Date? = Calendar.current.date(byAdding: .month, value: 3, to: Date())
+    var examDateLeg3: Date? = Calendar.current.date(byAdding: .month, value: 3, to: Date())
     var dailyGoalTarget = 20
     var diagnosticCorrect = 0
     var diagnosticTotal = 0

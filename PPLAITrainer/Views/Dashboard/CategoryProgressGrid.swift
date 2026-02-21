@@ -9,12 +9,29 @@ struct CategoryProgressGrid: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundColor(.primary)
 
-            VStack(spacing: 10) {
-                ForEach(categories, id: \.id) { category in
-                    NavigationLink(value: category.id) {
-                        CategoryProgressRow(category: category)
+            if categories.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "chart.bar")
+                        .font(.largeTitle)
+                        .foregroundColor(.secondary)
+                    Text("No progress yet")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Text("Start answering questions to see your progress")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(categories, id: \.id) { category in
+                        NavigationLink(value: category.id) {
+                            CategoryProgressRow(category: category)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }

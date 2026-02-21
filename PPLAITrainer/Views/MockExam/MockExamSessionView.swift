@@ -117,6 +117,7 @@ struct MockExamSessionView: View {
                 } label: {
                     Image(systemName: "square.grid.3x3")
                 }
+                .accessibilityLabel("Question overview")
             }
             
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -130,6 +131,7 @@ struct MockExamSessionView: View {
                     Image(systemName: viewModel.flaggedQuestions.contains(viewModel.currentIndex) ? "flag.fill" : "flag")
                         .foregroundColor(viewModel.flaggedQuestions.contains(viewModel.currentIndex) ? .orange : .primary)
                 }
+                .accessibilityLabel(viewModel.flaggedQuestions.contains(viewModel.currentIndex) ? "Unflag question" : "Flag question for review")
             }
             
             ToolbarItem(placement: .navigationBarTrailing) {
