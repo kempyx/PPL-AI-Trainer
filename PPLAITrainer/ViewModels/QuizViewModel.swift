@@ -27,6 +27,7 @@ final class QuizViewModel {
     var isLoadingHint: Bool = false
     var aiInlineResponse: String? = nil
     var isLoadingInlineAI: Bool = false
+    var selectedExplainText: String? = nil
     
     enum AIRequestType: String {
         case explain = "explain"
@@ -124,6 +125,9 @@ final class QuizViewModel {
                 rawQuestions = try databaseManager.fetchQuestions(parentCategoryId: parentCategoryId, excludeMockOnly: true)
             }
             questions = try rawQuestions.shuffled().map { try createPresentedQuestion(from: $0) }
+            if !questions.isEmpty {
+                logInteractionEvent(name: "quiz_session_started", questionId: nil, metadata: "questionCount=\(questions.count)")
+            }
         } catch {
             questions = []
         }
@@ -153,6 +157,7 @@ final class QuizViewModel {
             showIncorrectFlash = true
         }
         questionsAnswered += 1
+        logInteractionEvent(name: "quiz_answer_submitted", questionId: current.question.id, metadata: "isCorrect=\(isCorrect)")
         Task {
             await recordAnswer(questionId: current.question.id, chosenAnswer: current.shuffledAnswers[selectedAnswer], isCorrect: isCorrect)
             await updateSRSCard(questionId: current.question.id, correct: isCorrect)
@@ -233,7 +238,12 @@ final class QuizViewModel {
         isLoadingInlineAI = false
         showCorrectFlash = false
         showIncorrectFlash = false
+        selectedExplainText = nil
         aiConversation?.chatMessages = []
+        if currentIndex >= questions.count {
+            let accuracy = questionsAnswered > 0 ? Double(correctCount) / Double(questionsAnswered) : 0
+            logInteractionEvent(name: "quiz_session_completed", questionId: nil, metadata: "answered=\(questionsAnswered);correct=\(correctCount);accuracy=\(accuracy)")
+        }
     }
     
     func previousQuestion() {
@@ -248,6 +258,7 @@ final class QuizViewModel {
         isLoadingInlineAI = false
         showCorrectFlash = false
         showIncorrectFlash = false
+        selectedExplainText = nil
         aiConversation?.chatMessages = []
     }
     
@@ -255,14 +266,14 @@ final class QuizViewModel {
     
     /// Build the question context string that seeds every chat
     private func questionContextString() -> String? {
-        guard let current = currentQuestion, let sel = selectedAnswer else { return nil }
+        guard let current = currentQuestion else { return nil }
         var ctx = """
         Question: \(current.question.text)
         
         Choices:
         \(current.shuffledAnswers.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: "\n"))
         
-        Your answer: \(current.shuffledAnswers[sel])
+        Your answer: \(selectedAnswer.map { current.shuffledAnswers[$0] } ?? "Not selected yet")
         Correct answer: \(current.shuffledAnswers[current.correctAnswerIndex])
         """
         
@@ -327,10 +338,12 @@ final class QuizViewModel {
     
     func getQuestionHint() {
         guard let current = currentQuestion else { return }
+        logInteractionEvent(name: "quiz_hint_requested", questionId: current.question.id, metadata: hasSubmitted ? "context=result" : "context=question")
         
         // Check cache first
         if let cached = try? databaseManager.fetchAIResponse(questionId: current.question.id, responseType: "hint") {
             aiHint = cached.response
+            logInteractionEvent(name: "quiz_hint_cache_hit", questionId: current.question.id, metadata: nil)
             return
         }
         
@@ -368,10 +381,12 @@ final class QuizViewModel {
                     createdAt: Date()
                 )
                 try? databaseManager.saveAIResponse(cache)
+                logInteractionEvent(name: "quiz_hint_generated", questionId: current.question.id, metadata: nil)
                 
                 isLoadingHint = false
             } catch {
                 aiHint = "Unable to generate hint. Please try again."
+                logInteractionEvent(name: "quiz_hint_failed", questionId: current.question.id, metadata: nil)
                 isLoadingHint = false
             }
         }
@@ -379,6 +394,7 @@ final class QuizViewModel {
     
     func requestInlineAI(type: AIRequestType) {
         guard let current = currentQuestion else { return }
+        logInteractionEvent(name: "quiz_inline_ai_requested", questionId: current.question.id, metadata: "type=\(type.rawValue)")
         
         // Check cache first
         if let cached = try? databaseManager.fetchAIResponse(questionId: current.question.id, responseType: type.rawValue) {
@@ -426,13 +442,41 @@ final class QuizViewModel {
                     createdAt: Date()
                 )
                 try? databaseManager.saveAIResponse(cache)
+                logInteractionEvent(name: "quiz_inline_ai_generated", questionId: current.question.id, metadata: "type=\(type.rawValue)")
                 
                 isLoadingInlineAI = false
             } catch {
                 aiInlineResponse = "Unable to generate response. Please try again."
+                logInteractionEvent(name: "quiz_inline_ai_failed", questionId: current.question.id, metadata: "type=\(type.rawValue)")
                 isLoadingInlineAI = false
             }
         }
+    }
+
+    // MARK: - Contextual Explain
+
+    func updateSelectedExplainText(_ text: String?) {
+        let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines)
+        selectedExplainText = (trimmed?.isEmpty == false) ? trimmed : nil
+    }
+
+    func explainSelectedText() {
+        guard settingsManager.aiEnabled,
+              let current = currentQuestion,
+              let selectedExplainText else { return }
+
+        let prompt = """
+        Explain this selected aviation term from the question in a concise, exam-focused way.
+
+        Selected text: "\(selectedExplainText)"
+        Question: \(current.question.text)
+        Correct answer: \(current.shuffledAnswers[current.correctAnswerIndex])
+        \(current.question.explanation.map { "Official explanation: \($0)" } ?? "")
+        """
+
+        aiConversation?.showAISheet = true
+        aiConversation?.sendChatMessage(prompt)
+        logInteractionEvent(name: "quiz_contextual_explain_requested", questionId: current.question.id, metadata: "selection=\(selectedExplainText.prefix(60))")
     }
     
     // MARK: - Visual Prompt Generation
@@ -496,5 +540,11 @@ final class QuizViewModel {
     
     func clearSavedSession() {
         try? databaseManager.clearQuizSession()
+    }
+
+    // MARK: - Analytics
+
+    private func logInteractionEvent(name: String, questionId: Int64?, metadata: String?) {
+        try? databaseManager.logInteractionEvent(name: name, questionId: questionId, metadata: metadata)
     }
 }

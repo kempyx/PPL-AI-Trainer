@@ -2,8 +2,10 @@ import SwiftUI
 
 struct QuizSessionView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dependencies) private var dependencies
     @State var viewModel: QuizViewModel
     @State private var showSummary = false
+    @State private var reviewWrongAnswersVM: QuizViewModel?
 
     private var scorePercentage: Int {
         guard viewModel.questionsAnswered > 0 else { return 0 }
@@ -61,10 +63,18 @@ struct QuizSessionView: View {
                     .padding(.vertical, 12)
 
                     if !viewModel.hasSubmitted {
-                        QuestionView(question: current, selectedAnswer: $viewModel.selectedAnswer)
+                        QuestionView(
+                            question: current,
+                            selectedAnswer: $viewModel.selectedAnswer,
+                            selectedExplainText: selectedExplainBinding
+                        )
                             .id("question-\(viewModel.currentIndex)")
                     } else {
-                        ResultView(viewModel: viewModel, question: current)
+                        ResultView(
+                            viewModel: viewModel,
+                            question: current,
+                            selectedExplainText: selectedExplainBinding
+                        )
                             .id("result-\(viewModel.currentIndex)")
                             .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     }
@@ -80,22 +90,8 @@ struct QuizSessionView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                if viewModel.currentQuestion != nil, !viewModel.hasSubmitted {
-                    Button {
-                        viewModel.submitAnswer()
-                    } label: {
-                        Text("Submit")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(viewModel.selectedAnswer == nil ? Color.gray : Color.blue)
-                            .cornerRadius(12)
-                    }
-                    .disabled(viewModel.selectedAnswer == nil)
-                    .padding(.horizontal)
-                    .padding(.bottom, 8)
-                    .background(.regularMaterial)
+                if viewModel.currentQuestion != nil {
+                    quizActionRail
                 }
             }
 
@@ -151,6 +147,14 @@ struct QuizSessionView: View {
             if let aiVM = viewModel.aiConversation {
                 AIConversationSheet(viewModel: aiVM)
                     .presentationDetents([.large])
+            }
+        }
+        .navigationDestination(isPresented: Binding(
+            get: { reviewWrongAnswersVM != nil },
+            set: { if !$0 { reviewWrongAnswersVM = nil } }
+        )) {
+            if let vm = reviewWrongAnswersVM {
+                QuizSessionView(viewModel: vm)
             }
         }
         .overlay {
@@ -215,8 +219,97 @@ struct QuizSessionView: View {
             Spacer()
         }
         .sheet(isPresented: $showSummary) {
-            PostSessionSummaryView(summary: buildSessionSummary())
+            PostSessionSummaryView(
+                summary: buildSessionSummary(),
+                onReviewWrongAnswers: wrongAnswerCount > 0 ? {
+                    guard let dependencies else { return }
+                    reviewWrongAnswersVM = dependencies.quizCoordinator.makeViewModel(mode: .wrongAnswers)
+                } : nil
+            )
         }
+    }
+
+    private var wrongAnswerCount: Int {
+        max(viewModel.questionsAnswered - viewModel.correctCount, 0)
+    }
+
+    private var selectedExplainBinding: Binding<String?> {
+        Binding(
+            get: { viewModel.selectedExplainText },
+            set: { viewModel.updateSelectedExplainText($0) }
+        )
+    }
+
+    private var quizActionRail: some View {
+        VStack(spacing: 8) {
+            if viewModel.settingsManager.aiEnabled, let selected = viewModel.selectedExplainText, !selected.isEmpty {
+                Button {
+                    viewModel.explainSelectedText()
+                } label: {
+                    HStack {
+                        Image(systemName: "text.quote")
+                        Text("Explain Selection")
+                        Spacer()
+                        Text("\"\(selected.prefix(20))\"")
+                            .lineLimit(1)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                .padding(.horizontal)
+            }
+
+            if viewModel.settingsManager.aiEnabled, !viewModel.hasSubmitted {
+                Button {
+                    viewModel.getQuestionHint()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "lightbulb")
+                        Text("Hint")
+                    }
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                .padding(.horizontal)
+
+                if viewModel.isLoadingHint {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal)
+                } else if let hint = viewModel.aiHint, !hint.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Hint")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(hint)
+                            .font(.subheadline)
+                            .textSelection(.enabled)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal)
+                }
+            }
+
+            if !viewModel.hasSubmitted {
+                Button {
+                    viewModel.submitAnswer()
+                } label: {
+                    Text("Submit")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(viewModel.selectedAnswer == nil ? Color.gray : Color.blue)
+                        .cornerRadius(12)
+                }
+                .disabled(viewModel.selectedAnswer == nil)
+                .padding(.horizontal)
+            }
+        }
+        .padding(.bottom, 8)
+        .background(.regularMaterial)
     }
     
     private func segmentColor(for index: Int) -> Color {

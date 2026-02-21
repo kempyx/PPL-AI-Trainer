@@ -3,14 +3,18 @@ import SwiftUI
 struct QuestionView: View {
     let question: PresentedQuestion
     @Binding var selectedAnswer: Int?
+    @Binding var selectedExplainText: String?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text(question.question.text)
-                    .font(.headline)
-                    .textSelection(.enabled)
-                    .padding()
+                SelectableTextView(
+                    text: question.question.text,
+                    font: .preferredFont(forTextStyle: .headline),
+                    onSelectionChange: { selected in
+                        selectedExplainText = selected
+                    }
+                )
 
                 ForEach(question.questionAttachments, id: \.id) { attachment in
                     if let uiImage = loadBundleUIImage(filename: attachment.filename) {
@@ -24,6 +28,7 @@ struct QuestionView: View {
                 ForEach(0..<question.shuffledAnswers.count, id: \.self) { index in
                     Button {
                         selectedAnswer = index
+                        selectedExplainText = nil
                     } label: {
                         HStack(spacing: 12) {
                             Text(["A", "B", "C", "D"][index])
@@ -89,6 +94,7 @@ struct QuestionView: View {
     )
     QuestionView(
         question: presented,
-        selectedAnswer: .constant(nil)
+        selectedAnswer: .constant(nil),
+        selectedExplainText: .constant(nil)
     )
 }

@@ -5,6 +5,7 @@ struct ResultView: View {
     @State var viewModel: QuizViewModel
     @Environment(\.dependencies) private var dependencies
     let question: PresentedQuestion
+    @Binding var selectedExplainText: String?
     @State private var isBookmarked = false
     @State private var showNoteEditor = false
     @State private var note: Note?
@@ -37,14 +38,25 @@ struct ResultView: View {
                     .accessibilityLabel(isBookmarked ? "Remove bookmark" : "Add bookmark")
                 }
                 
-                Text(question.question.text)
-                    .font(.body.weight(.semibold))
-                    .textSelection(.enabled)
+                SelectableTextView(
+                    text: question.question.text,
+                    font: .preferredFont(forTextStyle: .headline),
+                    onSelectionChange: { selected in
+                        selectedExplainText = selected
+                        viewModel.updateSelectedExplainText(selected)
+                    }
+                )
                 
                 ForEach(0..<question.shuffledAnswers.count, id: \.self) { index in
                     HStack {
-                        Text(question.shuffledAnswers[index])
-                            .textSelection(.enabled)
+                        SelectableTextView(
+                            text: question.shuffledAnswers[index],
+                            font: .preferredFont(forTextStyle: .body),
+                            onSelectionChange: { selected in
+                                selectedExplainText = selected
+                                viewModel.updateSelectedExplainText(selected)
+                            }
+                        )
                         Spacer()
                         if index == question.correctAnswerIndex {
                             Image(systemName: "checkmark.circle.fill")
@@ -97,6 +109,24 @@ struct ResultView: View {
                     if let uiImage = loadBundleUIImage(filename: attachment.filename) {
                         ZoomableImageView(uiImage: uiImage)
                     }
+                }
+
+                if viewModel.settingsManager.aiEnabled, let selectedExplainText, !selectedExplainText.isEmpty {
+                    Button {
+                        viewModel.updateSelectedExplainText(selectedExplainText)
+                        viewModel.explainSelectedText()
+                    } label: {
+                        HStack {
+                            Image(systemName: "text.quote")
+                            Text("Explain Selection")
+                            Spacer()
+                            Text("\"\(selectedExplainText.prefix(24))\"")
+                                .lineLimit(1)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(SecondaryButtonStyle())
                 }
                 
                 if viewModel.settingsManager.aiEnabled {
@@ -209,6 +239,8 @@ struct ResultView: View {
                 }
                 
                 Button("Next Question") {
+                    selectedExplainText = nil
+                    viewModel.updateSelectedExplainText(nil)
                     viewModel.nextQuestion()
                 }
                 .buttonStyle(PrimaryButtonStyle())
@@ -240,6 +272,9 @@ struct ResultView: View {
                     }
                 }
             }
+        }
+        .onDisappear {
+            viewModel.updateSelectedExplainText(nil)
         }
         .onAppear {
             if let deps = dependencies {
@@ -347,7 +382,8 @@ struct ResultView: View {
     )
     ResultView(
         viewModel: deps.makeQuizViewModel(),
-        question: presented
+        question: presented,
+        selectedExplainText: .constant(nil)
     )
     .environment(\.dependencies, deps)
 }
