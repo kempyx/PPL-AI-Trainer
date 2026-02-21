@@ -5,6 +5,7 @@ struct StudyView: View {
     @Environment(\.dependencies) private var deps
     @State private var savedSession: QuizSessionState? = nil
     @State private var showResumeConfirmation = false
+    @State private var resumeVM: QuizViewModel? = nil
     
     init(viewModel: StudyViewModel) {
         self.viewModel = viewModel
@@ -32,11 +33,10 @@ struct StudyView: View {
                             }
                             Spacer()
                             Button("Resume") {
-                                if let deps = deps {
-                                    let vm = deps.makeQuizViewModel()
-                                    vm.restoreSession(from: session)
-                                    // Navigate to quiz
-                                }
+                                guard let deps = deps else { return }
+                                let vm = deps.makeQuizViewModel()
+                                vm.restoreSession(from: session)
+                                resumeVM = vm
                             }
                             .buttonStyle(.borderedProminent)
                             Button {
@@ -138,6 +138,14 @@ struct StudyView: View {
             } message: {
                 if let session = savedSession {
                     Text("You've answered \(session.currentIndex) of \(session.questionIds.split(separator: ",").count) questions.")
+                }
+            }
+            .navigationDestination(isPresented: Binding(
+                get: { resumeVM != nil },
+                set: { if !$0 { resumeVM = nil } }
+            )) {
+                if let vm = resumeVM {
+                    QuizSessionView(viewModel: vm)
                 }
             }
         }

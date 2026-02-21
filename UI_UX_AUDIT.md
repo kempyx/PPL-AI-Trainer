@@ -47,12 +47,12 @@ If this section conflicts with historical status tables below, **this section wi
 
 | Priority | ID | Scope | Status | Notes |
 |----------|----|-------|--------|-------|
-| 1 | RESTORE-3 | Session persistence hardening + resume UX verification | [ ] TODO | Confirm save/restore on background, back navigation, and completion clear |
-| 2 | RESTORE-4 | Hint system UX + caching verification | [ ] TODO | Ensure hint CTA exists in flow and uses cache path |
-| 3 | RESTORE-5 | Inline AI actions UX + continuity verification | [ ] TODO | Explain/Simplify/Analogy/Mistakes actions in result flow |
-| 4 | RESTORE-6 | Image attachment context for AI | [ ] TODO | Include attachment context in AI prompts (text + multimodal-aware path) |
-| 5 | RESTORE-7 | Image/video prompt generation restore | [ ] TODO | Restore prompt generation entry points and prompt composition rules |
-| 6 | RESTORE-8 | Category progress parity regression check | [ ] TODO | Verify Dashboard and Study progress semantics remain aligned |
+| 1 | RESTORE-3 | Session persistence hardening + resume UX verification | [x] DONE | Added back-navigation save in `QuizSessionView`; wired Study resume button to navigate with restored VM; completion still clears saved session |
+| 2 | RESTORE-4 | Hint system UX + caching verification | [x] DONE | Verified `ResultView` exposes "Get a Hint" CTA and `QuizViewModel.getQuestionHint()` reads/writes `AIResponseCache` before network call |
+| 3 | RESTORE-5 | Inline AI actions UX + continuity verification | [x] DONE | Verified `ResultView` exposes Explain/Simplify/Analogy/Mistakes buttons and `requestInlineAI` appends responses into shared AI conversation history |
+| 4 | RESTORE-6 | Image attachment context for AI | [x] DONE | Extended quiz AI context to include attachment filenames plus base64 data-URL payloads for vision-capable models (`gemini-3`/`gpt-4.x`) |
+| 5 | RESTORE-7 | Image/video prompt generation restore | [x] DONE | Added "Generate Image"/"Generate Video" actions in `ResultView` with copyable prompt sheet powered by `QuizViewModel.generateVisualPrompt` |
+| 6 | RESTORE-8 | Category progress parity regression check | [x] DONE | Swapped Dashboard category row bar to shared `QuizProgressBar` for the same correct/incorrect/unanswered semantics used in Study |
 
 **Execution protocol for this queue:**
 1. Use one long-lived branch for the full Active Queue (e.g., `codex/active-queue-full`).

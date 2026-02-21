@@ -72,35 +72,11 @@ private struct CategoryProgressRow: View {
                     .foregroundColor(.secondary)
             }
 
-            GeometryReader { geo in
-                let width = geo.size.width
-                let correctWidth = category.totalQuestions > 0
-                    ? width * CGFloat(category.answeredCorrectly) / CGFloat(category.totalQuestions)
-                    : 0
-                let incorrectWidth = category.totalQuestions > 0
-                    ? width * CGFloat(category.answeredIncorrectly) / CGFloat(category.totalQuestions)
-                    : 0
-
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color(.systemGray5))
-                        .frame(height: 6)
-
-                    HStack(spacing: 0) {
-                        if correctWidth > 0 {
-                            Capsule()
-                                .fill(Color.green)
-                                .frame(width: max(correctWidth, 3), height: 6)
-                        }
-                        if incorrectWidth > 0 {
-                            Capsule()
-                                .fill(Color.red.opacity(0.6))
-                                .frame(width: max(incorrectWidth, 3), height: 6)
-                        }
-                    }
-                }
-            }
-            .frame(height: 6)
+            QuizProgressBar(
+                total: category.totalQuestions,
+                correct: category.answeredCorrectly,
+                incorrect: category.answeredIncorrectly
+            )
         }
     }
 

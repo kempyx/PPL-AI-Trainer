@@ -276,10 +276,51 @@ final class QuizViewModel {
             ctx += "\n\nNote: The explanation includes diagram(s): \(imageNames)"
         }
         
+        if selectedModelSupportsVision() {
+            let attachmentFiles = (current.questionAttachments + current.explanationAttachments).map(\.filename)
+            let multimodalPayloads = attachmentFiles.compactMap { name in
+                guard let dataURL = base64DataURL(for: name) else { return nil }
+                return "- \(name): \(dataURL)"
+            }
+            if !multimodalPayloads.isEmpty {
+                ctx += "\n\nMultimodal attachment context (data URLs):\n\(multimodalPayloads.joined(separator: "\n"))"
+            }
+        }
+
         if let explanation = current.question.explanation, !explanation.isEmpty {
             ctx += "\n\nOfficial explanation:\n\(explanation)"
         }
         return ctx
+    }
+
+    private func selectedModelSupportsVision() -> Bool {
+        let provider = AIProviderType(rawValue: settingsManager.selectedProvider) ?? .openai
+        let modelId = provider.resolveModelId(settingsManager.selectedModel).lowercased()
+
+        if modelId.contains("gemini-3") || modelId.contains("gpt-4o") || modelId.contains("gpt-4.1") {
+            return true
+        }
+        return false
+    }
+
+    private func mimeType(for filename: String) -> String {
+        switch (filename as NSString).pathExtension.lowercased() {
+        case "png": return "image/png"
+        case "jpg", "jpeg": return "image/jpeg"
+        case "webp": return "image/webp"
+        default: return "application/octet-stream"
+        }
+    }
+
+    private func base64DataURL(for filename: String) -> String? {
+        let nsFilename = filename as NSString
+        let name = nsFilename.deletingPathExtension
+        let ext = nsFilename.pathExtension
+        guard let path = Bundle.main.path(forResource: name, ofType: ext),
+              let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+            return nil
+        }
+        return "data:\(mimeType(for: filename));base64,\(data.base64EncodedString())"
     }
     
     // MARK: - AI Hint
