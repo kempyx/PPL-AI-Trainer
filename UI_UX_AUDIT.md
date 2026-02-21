@@ -10,6 +10,7 @@
 ## Table of Contents
 
 1. [Executive Summary](#1-executive-summary)
+1a. [Active Queue (Codex Web Source of Truth)](#1a-active-queue-codex-web-source-of-truth)
 2. [Phase 1 Status (Critical)](#2-phase-1-status-critical)
 2b. [Lost Features — Restoration Tasks](#2b-lost-features--restoration-tasks-regression-from-uncommitted-work)
 3. [Global Issues](#3-global-issues)
@@ -35,6 +36,29 @@ PPLAITrainer has a solid foundation: 2,681 real EASA questions, multi-provider A
 1. **No clear study path** — The student opens the app and sees 9 dashboard widgets and 10+ study entry points with no clear "do this next" funnel.
 2. **Broken completion loops** — Quiz sessions end abruptly; the post-session summary is disconnected from next actions.
 3. **Visual inconsistency** — Cards use `.regularMaterial` backgrounds but buttons alternate between `.borderedProminent`, plain colored rectangles, and custom styles with no system.
+
+---
+
+## 1a. Active Queue (Codex Web Source of Truth)
+
+Use this section as the **only active execution queue** for Codex Web work.
+
+If this section conflicts with historical status tables below, **this section wins**.
+
+| Priority | ID | Scope | Status | Notes |
+|----------|----|-------|--------|-------|
+| 1 | RESTORE-3 | Session persistence hardening + resume UX verification | [ ] TODO | Confirm save/restore on background, back navigation, and completion clear |
+| 2 | RESTORE-4 | Hint system UX + caching verification | [ ] TODO | Ensure hint CTA exists in flow and uses cache path |
+| 3 | RESTORE-5 | Inline AI actions UX + continuity verification | [ ] TODO | Explain/Simplify/Analogy/Mistakes actions in result flow |
+| 4 | RESTORE-6 | Image attachment context for AI | [ ] TODO | Include attachment context in AI prompts (text + multimodal-aware path) |
+| 5 | RESTORE-7 | Image/video prompt generation restore | [ ] TODO | Restore prompt generation entry points and prompt composition rules |
+| 6 | RESTORE-8 | Category progress parity regression check | [ ] TODO | Verify Dashboard and Study progress semantics remain aligned |
+
+**Execution protocol for this queue:**
+1. Open one PR per task (no multi-task PRs).
+2. Update this table immediately after finishing each task (`[ ] TODO` → `[x] DONE`).
+3. Keep `UI_UX_AUDIT.md` in every PR so cloud agents always see latest task state.
+4. Run `./scripts/check.sh` before marking a task done.
 
 ---
 
