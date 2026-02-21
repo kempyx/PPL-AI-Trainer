@@ -37,7 +37,6 @@ struct MockExamTrendChart: View {
             .frame(height: 200)
         }
         .padding()
-        .background(.regularMaterial)
-        .cornerRadius(14)
+        .cardStyle()
     }
 }

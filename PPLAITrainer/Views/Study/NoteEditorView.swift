@@ -22,8 +22,7 @@ struct NoteEditorView: View {
             VStack {
                 TextEditor(text: $noteText)
                     .padding(8)
-                    .background(.regularMaterial)
-                    .cornerRadius(12)
+                    .cardStyle()
                     .padding()
             }
             .navigationTitle("Note")

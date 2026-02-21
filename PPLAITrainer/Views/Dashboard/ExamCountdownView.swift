@@ -44,8 +44,7 @@ struct ExamCountdownView: View {
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.regularMaterial)
-            .cornerRadius(14)
+            .cardStyle()
         }
     }
 }

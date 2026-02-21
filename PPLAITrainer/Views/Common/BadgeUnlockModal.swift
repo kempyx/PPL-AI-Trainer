@@ -40,12 +40,10 @@ struct BadgeUnlockModal: View {
                 Button("Awesome!") {
                     onDismiss()
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.yellow)
+                .buttonStyle(PrimaryButtonStyle())
             }
             .padding(30)
-            .background(.regularMaterial)
-            .cornerRadius(20)
+            .cardStyle()
             .shadow(radius: 20)
             .scaleEffect(scale)
             .onAppear {

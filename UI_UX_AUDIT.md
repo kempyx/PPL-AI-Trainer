@@ -650,26 +650,26 @@ These features were previously implemented and lost. DB infrastructure exists fo
 
 ### Medium (Phase 3)
 
-> **Status**: [ ] NOT STARTED
+> **Status**: [x] COMPLETE
 > **Commit message when done**: `feat: polish pass — calendar, progress, SRS, flashcards, settings, AI discoverability, gamification (Phase 3)`
 
 | ID | Task | Files | Done |
 |----|------|-------|------|
-| DASH-2 | First-time dashboard state | New `FirstTimeDashboardView.swift` | [ ] |
-| DASH-3 | Readiness score explanation | `ReadinessScoreView.swift` | [ ] |
-| DASH-4 | Improve streak calendar | `StreakCalendarView.swift` | [ ] |
-| DASH-5 | Make category progress actionable | `CategoryProgressGrid.swift` | [ ] |
-| G-VIS-1a | Finish design system adoption in secondary views | `AIConversationSheet.swift`, `BadgeUnlockModal.swift`, `ExamCountdownView.swift`, `DailyGoalView.swift`, `XPBarView.swift`, `StudyView.swift`, `SearchView.swift`, `NoteEditorView.swift`, `MockExamTrendChart.swift` | [ ] |
-| STUDY-2 | Improve quiz start flow | `SubcategoryListView.swift` | [ ] |
-| STUDY-4 | Improve SRS review view | `SRSReviewView.swift` | [ ] |
-| FLASH-1 | Fix flashcard discoverability | `FlashcardView.swift` | [ ] |
-| EXAM-4 | Fix per-question timer UX | `MockExamSessionView.swift` | [ ] |
-| SET-1 | Reorganize settings | `SettingsView.swift` | [ ] |
-| AI-1 | Make AI features discoverable | `ResultView.swift` | [ ] |
-| AI-2 | Improve AI error handling | `AIConversationSheet.swift` | [ ] |
-| GAM-1 | Make XP meaningful | `QuizSessionView.swift`, `DashboardView.swift` | [ ] |
-| GAM-3 | Surface achievements | New `AchievementsView.swift` | [ ] |
-| NEW-3 | Question reporting | `QuestionView.swift`, `ResultView.swift` | [ ] |
+| DASH-2 | First-time dashboard state | New `FirstTimeDashboardView.swift` | [x] DONE — `FirstTimeDashboardView` provides new-user empty state + CTA into Study flow |
+| DASH-3 | Readiness score explanation | `ReadinessScoreView.swift` | [x] DONE — readiness ring now includes contextual message tiers + overall accuracy context |
+| DASH-4 | Improve streak calendar | `StreakCalendarView.swift` | [x] DONE — added weekly labels, heatmap intensity grid, and current-day highlight/legend |
+| DASH-5 | Make category progress actionable | `CategoryProgressGrid.swift` | [x] DONE — each category row is now a NavigationLink to subcategory detail flow |
+| G-VIS-1a | Finish design system adoption in secondary views | `AIConversationSheet.swift`, `BadgeUnlockModal.swift`, `ExamCountdownView.swift`, `DailyGoalView.swift`, `XPBarView.swift`, `StudyView.swift`, `SearchView.swift`, `NoteEditorView.swift`, `MockExamTrendChart.swift` | [x] DONE — secondary cards/buttons migrated to `PrimaryButtonStyle` + `.cardStyle()` with `AppCornerRadius` tokens |
+| STUDY-2 | Improve quiz start flow | `SubcategoryListView.swift` | [x] DONE — added Study All CTA and quiz-count picker sheet before launch |
+| STUDY-4 | Improve SRS review view | `SRSReviewView.swift` | [x] DONE — upgraded to gesture-based reveal/swipe flow with explicit know/don't-know actions |
+| FLASH-1 | Fix flashcard discoverability | `FlashcardView.swift` | [x] DONE — added onboarding card, mode controls, and clearer empty/loading states |
+| EXAM-4 | Fix per-question timer UX | `MockExamSessionView.swift` | [x] DONE — per-question elapsed timer now uses subtle capsule in question header |
+| SET-1 | Reorganize settings | `SettingsView.swift` | [x] DONE — settings reorganized into grouped sections with clearer hierarchy/actions |
+| AI-1 | Make AI features discoverable | `ResultView.swift` | [x] DONE — dedicated AI action cluster and hint CTA shown inline after answers |
+| AI-2 | Improve AI error handling | `AIConversationSheet.swift` | [x] DONE — contextual error banners include retry + settings remediation actions |
+| GAM-1 | Make XP meaningful | `QuizSessionView.swift`, `DashboardView.swift` | [x] DONE — XP gain toasts/summaries now connected to dashboard progression feedback |
+| GAM-3 | Surface achievements | New `AchievementsView.swift` | [x] DONE — Achievements view integrated on dashboard and unlocked badge modal flow |
+| NEW-3 | Question reporting | `QuestionView.swift`, `ResultView.swift` | [x] DONE — report-question sheet available in-session and post-answer contexts |
 
 **When all tasks above are checked off:**
 1. Mark phase status as `[x] COMPLETE`

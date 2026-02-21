@@ -30,10 +30,10 @@ struct DailyGoalView: View {
             
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: AppCornerRadius.small)
                         .fill(.gray.opacity(0.3))
                     
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: AppCornerRadius.small)
                         .fill(isComplete ? Color.green : Color.blue)
                         .frame(width: geometry.size.width * animatedProgress)
                 }
@@ -51,7 +51,6 @@ struct DailyGoalView: View {
             }
         }
         .padding()
-        .background(.regularMaterial)
-        .cornerRadius(14)
+        .cardStyle()
     }
 }
