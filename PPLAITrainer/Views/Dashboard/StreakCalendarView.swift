@@ -35,13 +35,28 @@ struct StreakCalendarView: View {
                 }
             }
 
+            // Day labels
+            HStack(spacing: 0) {
+                ForEach(["M", "T", "W", "T", "F", "S", "S"], id: \.self) { day in
+                    Text(day)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            
             // Heat map grid
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 4) {
                 ForEach(last30Days(), id: \.self) { date in
                     let intensity = intensityForDate(date)
+                    let isToday = date == DateFormatter.yyyyMMdd.string(from: Date())
                     RoundedRectangle(cornerRadius: 3, style: .continuous)
                         .fill(colorForIntensity(intensity))
                         .frame(height: 24)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                                .stroke(isToday ? Color.blue : Color.clear, lineWidth: 2)
+                        )
                 }
             }
 

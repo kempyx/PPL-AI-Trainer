@@ -66,13 +66,56 @@ struct SubcategoryListView: View {
 
     private func studyAllButton(_ deps: Dependencies) -> some View {
         VStack(spacing: 8) {
+            HStack(spacing: 12) {
+                NavigationLink {
+                    QuizSessionView(viewModel: makeQuizVM(deps, parentCategoryId: parentId, limit: 10))
+                        .onAppear {
+                            deps.settingsManager.setLastStudiedSubject(id: parentId, name: parentName)
+                        }
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: "bolt.fill")
+                            .font(.title3)
+                        Text("Quick")
+                            .font(.caption.weight(.semibold))
+                        Text("10 q")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(.regularMaterial)
+                    .cornerRadius(AppCornerRadius.medium)
+                }
+                .buttonStyle(.plain)
+                
+                Button {
+                    showQuizPicker = true
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.title3)
+                        Text("Custom")
+                            .font(.caption.weight(.semibold))
+                        Text("Choose")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(.regularMaterial)
+                    .cornerRadius(AppCornerRadius.medium)
+                }
+                .buttonStyle(.plain)
+            }
+            
             Button {
                 showQuizPicker = true
             } label: {
                 HStack {
                     Image(systemName: "play.fill")
                         .font(.subheadline)
-                    Text("Start Quiz")
+                    Text("Study All Questions")
                         .font(.subheadline.weight(.semibold))
                     Spacer()
                     Text("\(totalQuestionCount) questions")

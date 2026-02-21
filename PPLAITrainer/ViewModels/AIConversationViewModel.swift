@@ -125,6 +125,11 @@ class AIConversationViewModel {
         isLoadingAI = false
     }
     
+    func retryLastMessage() {
+        aiError = nil
+        Task { await performChatRequest() }
+    }
+    
     private func typewriterEffect(text: String) async {
         typewriterTask?.cancel()
         displayedAIText = ""

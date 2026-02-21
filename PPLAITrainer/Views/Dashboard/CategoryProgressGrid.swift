@@ -11,12 +11,20 @@ struct CategoryProgressGrid: View {
 
             VStack(spacing: 10) {
                 ForEach(categories, id: \.id) { category in
-                    CategoryProgressRow(category: category)
+                    NavigationLink(value: category.id) {
+                        CategoryProgressRow(category: category)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
         .padding(16)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .navigationDestination(for: Int64.self) { categoryId in
+            if let category = categories.first(where: { $0.id == categoryId }) {
+                CategoryDetailDestination(categoryId: categoryId, categoryName: category.name)
+            }
+        }
     }
 }
 
@@ -41,12 +49,19 @@ private struct CategoryProgressRow: View {
                     .font(.caption.weight(.semibold).monospacedDigit())
                     .foregroundColor(progressColor)
                     .frame(width: 36, alignment: .trailing)
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
             }
 
             GeometryReader { geo in
                 let width = geo.size.width
-                let filled = category.totalQuestions > 0
+                let correctWidth = category.totalQuestions > 0
                     ? width * CGFloat(category.answeredCorrectly) / CGFloat(category.totalQuestions)
+                    : 0
+                let incorrectWidth = category.totalQuestions > 0
+                    ? width * CGFloat(category.answeredIncorrectly) / CGFloat(category.totalQuestions)
                     : 0
 
                 ZStack(alignment: .leading) {
@@ -54,10 +69,17 @@ private struct CategoryProgressRow: View {
                         .fill(Color(.systemGray5))
                         .frame(height: 6)
 
-                    if filled > 0 {
-                        Capsule()
-                            .fill(progressColor)
-                            .frame(width: max(filled, 3), height: 6)
+                    HStack(spacing: 0) {
+                        if correctWidth > 0 {
+                            Capsule()
+                                .fill(Color.green)
+                                .frame(width: max(correctWidth, 3), height: 6)
+                        }
+                        if incorrectWidth > 0 {
+                            Capsule()
+                                .fill(Color.red.opacity(0.6))
+                                .frame(width: max(incorrectWidth, 3), height: 6)
+                        }
                     }
                 }
             }
@@ -75,5 +97,23 @@ private struct CategoryProgressRow: View {
         if category.percentage >= 75 { return .green }
         if category.percentage >= 50 { return .orange }
         return .red
+    }
+}
+
+private struct CategoryDetailDestination: View {
+    @Environment(\.dependencies) private var deps
+    let categoryId: Int64
+    let categoryName: String
+    
+    var body: some View {
+        if let deps = deps {
+            SubcategoryListView(
+                viewModel: StudyViewModel(databaseManager: deps.databaseManager),
+                parentId: categoryId,
+                parentName: categoryName
+            )
+        } else {
+            Text("Error loading category")
+        }
     }
 }

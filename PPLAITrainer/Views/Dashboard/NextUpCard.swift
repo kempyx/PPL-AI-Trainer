@@ -3,11 +3,12 @@ import SwiftUI
 struct NextUpCard: View {
     @Environment(\.dependencies) private var dependencies
     @State private var recommendation: Recommendation?
+    @State private var navigationPath = NavigationPath()
     
     enum Recommendation {
         case resumeQuiz(subject: String)
         case reviewSRS(count: Int)
-        case focusWeakArea(subject: String, accuracy: Double)
+        case focusWeakArea(weakArea: WeakArea)
         case continueStudying(subject: String)
     }
     
@@ -29,7 +30,7 @@ struct NextUpCard: View {
                         Spacer()
                     }
                     
-                    Button(action: {}) {
+                    NavigationLink(value: rec) {
                         Text(actionText(for: rec))
                     }
                     .buttonStyle(PrimaryButtonStyle())
@@ -37,8 +38,38 @@ struct NextUpCard: View {
                 .cardStyle()
             }
         }
+        .navigationDestination(for: Recommendation.self) { rec in
+            destinationView(for: rec)
+        }
         .task {
             await loadRecommendation()
+        }
+    }
+    
+    @ViewBuilder
+    private func destinationView(for rec: Recommendation) -> some View {
+        guard let deps = dependencies else {
+            Text("Error: Dependencies not available")
+            return
+        }
+        
+        switch rec {
+        case .reviewSRS:
+            let vm = deps.makeQuizViewModel()
+            QuizSessionView(viewModel: vm)
+                .onAppear {
+                    vm.loadQuestions(categoryId: nil, parentCategoryId: nil, wrongAnswersOnly: false, srsDueOnly: true)
+                }
+        case .focusWeakArea(let weakArea):
+            let vm = deps.makeQuizViewModel()
+            QuizSessionView(viewModel: vm)
+                .onAppear {
+                    vm.loadQuestions(categoryId: weakArea.id, parentCategoryId: nil, wrongAnswersOnly: false, srsDueOnly: false)
+                }
+        case .continueStudying:
+            StudyView(viewModel: deps.makeStudyViewModel())
+        case .resumeQuiz:
+            StudyView(viewModel: deps.makeStudyViewModel())
         }
     }
     
@@ -51,8 +82,37 @@ struct NextUpCard: View {
             return
         }
         
-        // Priority 2: Fallback to continue studying
+        // Priority 2: Check for weak areas (< 60% accuracy, at least 5 attempts)
+        if let weakAreas = try? await loadWeakAreas(deps: deps), let weakest = weakAreas.first {
+            recommendation = .focusWeakArea(weakArea: weakest)
+            return
+        }
+        
+        // Priority 3: Fallback to continue studying
         recommendation = .continueStudying(subject: "Your studies")
+    }
+    
+    @MainActor
+    private func loadWeakAreas(deps: Dependencies) async throws -> [WeakArea] {
+        let stats = try deps.databaseManager.fetchCategoryStats()
+        
+        let weakAreas = stats
+            .filter { $0.totalAnswered >= 5 && $0.correctPercentage < 0.60 }
+            .sorted { $0.correctPercentage < $1.correctPercentage }
+            .prefix(3)
+            .compactMap { stat -> WeakArea? in
+                guard let category = try? deps.databaseManager.fetchCategory(id: stat.categoryId) else { return nil }
+                let parentName = category.parent.flatMap { try? deps.databaseManager.fetchCategory(id: $0)?.name } ?? ""
+                return WeakArea(
+                    id: stat.categoryId,
+                    subcategoryName: category.name,
+                    parentCategoryName: parentName,
+                    correctPercentage: stat.correctPercentage,
+                    totalAnswered: stat.totalAnswered
+                )
+            }
+        
+        return Array(weakAreas)
     }
     
     private func iconName(for rec: Recommendation) -> String {
@@ -77,7 +137,7 @@ struct NextUpCard: View {
         switch rec {
         case .resumeQuiz(let subject): return subject
         case .reviewSRS(let count): return "\(count) card\(count == 1 ? "" : "s") due"
-        case .focusWeakArea(let subject, let accuracy): return "\(subject) • \(Int(accuracy * 100))% accuracy"
+        case .focusWeakArea(let weakArea): return "\(weakArea.subcategoryName) • \(Int(weakArea.correctPercentage * 100))% accuracy"
         case .continueStudying(let subject): return subject
         }
     }

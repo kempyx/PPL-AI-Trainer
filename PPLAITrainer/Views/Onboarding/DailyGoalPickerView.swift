@@ -43,16 +43,16 @@ struct DailyGoalPickerView: View {
                                     .padding(.vertical, 4)
                                     .background(.blue.opacity(0.15))
                                     .foregroundColor(.blue)
-                                    .cornerRadius(8)
+                                    .cornerRadius(AppCornerRadius.small)
                             }
                             Image(systemName: selectedGoal == goal ? "checkmark.circle.fill" : "circle")
                                 .foregroundColor(selectedGoal == goal ? .blue : .gray)
                         }
                         .padding()
                         .background(.regularMaterial)
-                        .cornerRadius(14)
+                        .cornerRadius(AppCornerRadius.medium)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 14)
+                            RoundedRectangle(cornerRadius: AppCornerRadius.medium)
                                 .stroke(selectedGoal == goal ? Color.blue : .clear, lineWidth: 2)
                         )
                     }
@@ -67,13 +67,8 @@ struct DailyGoalPickerView: View {
                 onContinue()
             } label: {
                 Text("Continue")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(14)
             }
+            .buttonStyle(PrimaryButtonStyle())
             .padding(.horizontal, 32)
             .padding(.bottom, 48)
         }

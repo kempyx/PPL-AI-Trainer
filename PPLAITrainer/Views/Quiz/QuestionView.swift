@@ -25,11 +25,19 @@ struct QuestionView: View {
                     Button {
                         selectedAnswer = index
                     } label: {
-                        HStack {
+                        HStack(spacing: 12) {
+                            Text(["A", "B", "C", "D"][index])
+                                .font(.caption.weight(.semibold))
+                                .frame(width: 28, height: 28)
+                                .background(Circle().fill(selectedAnswer == index ? Color.blue : Color(.systemGray5)))
+                                .foregroundStyle(selectedAnswer == index ? .white : .primary)
+                            
                             Text(question.shuffledAnswers[index])
                                 .foregroundColor(.primary)
                                 .textSelection(.enabled)
+                            
                             Spacer()
+                            
                             if selectedAnswer == index {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundColor(.blue)

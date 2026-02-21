@@ -7,12 +7,18 @@ struct ResultView: View {
     @State private var isBookmarked = false
     @State private var showNoteEditor = false
     @State private var note: Note?
+    @State private var showReportSheet = false
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 HStack {
                     Spacer()
+                    Button {
+                        showReportSheet = true
+                    } label: {
+                        Image(systemName: "flag")
+                    }
                     Button {
                         showNoteEditor = true
                     } label: {
@@ -64,7 +70,7 @@ struct ResultView: View {
                     DisclosureGroup(
                         isExpanded: .constant(!isCorrect),
                         content: {
-                            Text(explanation)
+                            Text(makeAttributedString(from: explanation))
                                 .textSelection(.enabled)
                                 .padding()
                                 .background(Color.gray.opacity(0.1))
@@ -99,6 +105,10 @@ struct ResultView: View {
                     }
                 }
                 
+                if !viewModel.settingsManager.aiEnabled && viewModel.selectedAnswer != question.correctAnswerIndex {
+                    aiTeaser
+                }
+                
                 Button("Next Question") {
                     viewModel.nextQuestion()
                 }
@@ -110,6 +120,9 @@ struct ResultView: View {
             NoteEditorView(question: question.question, existingNote: note) { savedNote in
                 note = savedNote
             }
+        }
+        .sheet(isPresented: $showReportSheet) {
+            QuestionReportSheet(question: question.question)
         }
         .onAppear {
             if let deps = dependencies {
@@ -129,6 +142,60 @@ struct ResultView: View {
             }
             isBookmarked.toggle()
         } catch {}
+    }
+    
+    private var aiTeaser: some View {
+        NavigationLink {
+            if let deps = dependencies {
+                SettingsView(viewModel: SettingsViewModel(keychainStore: deps.keychainStore, settingsManager: deps.settingsManager))
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "sparkles")
+                    .font(.title3)
+                    .foregroundColor(.purple)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Get AI Explanations")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Set up in Settings to get instant help")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding()
+            .background(
+                LinearGradient(
+                    colors: [.purple.opacity(0.1), .blue.opacity(0.1)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .cornerRadius(AppCornerRadius.medium)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func makeAttributedString(from text: String) -> AttributedString {
+        var attributedString = AttributedString(text)
+        if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
+            let matches = detector.matches(in: text, range: NSRange(text.startIndex..., in: text))
+            for match in matches {
+                if let range = Range(match.range, in: text) {
+                    let attributedRange = AttributedString(text[range]).range
+                    if let url = match.url, let attrRange = attributedRange {
+                        attributedString[attrRange].link = url
+                    }
+                }
+            }
+        }
+        return attributedString
     }
     
     private func loadBundleUIImage(filename: String) -> UIImage? {

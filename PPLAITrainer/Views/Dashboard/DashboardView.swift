@@ -2,6 +2,8 @@ import SwiftUI
 
 struct DashboardView: View {
     @State private var viewModel: DashboardViewModel
+    @AppStorage("dashboardProgressExpanded") private var progressExpanded = true
+    @AppStorage("dashboardStreaksExpanded") private var streaksExpanded = true
 
     init(viewModel: DashboardViewModel) {
         self.viewModel = viewModel
@@ -9,9 +11,18 @@ struct DashboardView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
+            if let stats = viewModel.studyStats, stats.answeredAllTime < 10 {
+                FirstTimeDashboardView()
+            } else {
+                dashboardContent
+            }
+        }
+    }
+    
+    private var dashboardContent: some View {
+        ScrollView {
                 VStack(spacing: 20) {
-                    // HERO SECTION: Status & Action
+                    // ACTION ZONE (always visible)
                     ReadinessScoreView(
                         score: viewModel.readinessScore,
                         totalQuestions: viewModel.totalQuestions,
@@ -20,46 +31,57 @@ struct DashboardView: View {
                     )
                     .staggeredFadeIn(index: 0)
                     
-                    ContinueStudyingCard()
+                    NextUpCard()
                         .staggeredFadeIn(index: 1)
                     
-                    RecommendedNextView(weakAreas: viewModel.weakAreas)
-                        .staggeredFadeIn(index: 2)
-                    
-                    // HABIT SECTION: Daily Engagement
                     DailyGoalView(
                         answeredToday: viewModel.answeredToday,
                         target: viewModel.dailyGoalTarget
                     )
+                    .staggeredFadeIn(index: 2)
+                    
+                    // PROGRESS (collapsible)
+                    DisclosureGroup(isExpanded: $progressExpanded) {
+                        VStack(spacing: 20) {
+                            CategoryProgressGrid(categories: viewModel.categoryProgress)
+                            WeakAreasView(weakAreas: viewModel.weakAreas)
+                        }
+                        .padding(.top, 12)
+                    } label: {
+                        Label("Progress", systemImage: "chart.bar.fill")
+                            .font(.headline)
+                    }
+                    .cardStyle()
                     .staggeredFadeIn(index: 3)
                     
-                    StreakCalendarView(
-                        studyDays: viewModel.studyDays,
-                        currentStreak: viewModel.currentStreak,
-                        longestStreak: viewModel.longestStreak
-                    )
+                    // STREAKS & STATS (collapsible)
+                    DisclosureGroup(isExpanded: $streaksExpanded) {
+                        VStack(spacing: 20) {
+                            StreakCalendarView(
+                                studyDays: viewModel.studyDays,
+                                currentStreak: viewModel.currentStreak,
+                                longestStreak: viewModel.longestStreak
+                            )
+                            
+                            ExamCountdownView(
+                                examDateLeg1: viewModel.examDateLeg1,
+                                examDateLeg2: viewModel.examDateLeg2,
+                                examDateLeg3: viewModel.examDateLeg3
+                            )
+                            
+                            XPBarView(
+                                totalXP: viewModel.totalXP,
+                                currentLevel: viewModel.currentLevel,
+                                progress: viewModel.xpProgress
+                            )
+                        }
+                        .padding(.top, 12)
+                    } label: {
+                        Label("Streaks & Stats", systemImage: "flame.fill")
+                            .font(.headline)
+                    }
+                    .cardStyle()
                     .staggeredFadeIn(index: 4)
-                    
-                    // STATUS SECTION: Background Info
-                    ExamCountdownView(
-                        examDateLeg1: viewModel.examDateLeg1,
-                        examDateLeg2: viewModel.examDateLeg2,
-                        examDateLeg3: viewModel.examDateLeg3
-                    )
-                    .staggeredFadeIn(index: 5)
-                    
-                    XPBarView(
-                        totalXP: viewModel.totalXP,
-                        currentLevel: viewModel.currentLevel,
-                        progress: viewModel.xpProgress
-                    )
-                    .staggeredFadeIn(index: 6)
-                    
-                    CategoryProgressGrid(categories: viewModel.categoryProgress)
-                        .staggeredFadeIn(index: 7)
-                    
-                    WeakAreasView(weakAreas: viewModel.weakAreas)
-                        .staggeredFadeIn(index: 8)
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)

@@ -139,18 +139,41 @@ struct FlashcardView: View {
             
             Spacer()
             
-            // Swipe hints
-            HStack {
-                Label("Don't know", systemImage: "xmark")
-                    .font(.caption)
-                    .foregroundStyle(.red.opacity(0.6))
+            // Action buttons
+            HStack(spacing: 20) {
+                Button {
+                    viewModel.swipeLeft()
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 40))
+                            .foregroundStyle(.red)
+                        Text("Don't Know")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
+                .buttonStyle(.plain)
+                
                 Spacer()
-                Label("Know it", systemImage: "checkmark")
-                    .font(.caption)
-                    .foregroundStyle(.green.opacity(0.6))
+                
+                Button {
+                    viewModel.swipeRight()
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 40))
+                            .foregroundStyle(.green)
+                        Text("Know It")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+                }
+                .buttonStyle(.plain)
             }
-            .padding(.horizontal, 32)
+            .padding(.horizontal, 60)
             .padding(.bottom, 16)
+            .opacity(viewModel.isFlipped ? 1 : 0)
         }
     }
     

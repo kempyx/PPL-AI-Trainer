@@ -41,13 +41,8 @@ struct ExamDatePickerView: View {
                 onContinue()
             } label: {
                 Text("Continue")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(14)
             }
+            .buttonStyle(PrimaryButtonStyle())
             .padding(.horizontal, 32)
             .padding(.bottom, 48)
         }
@@ -91,6 +86,6 @@ struct ExamDatePickerView: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.regularMaterial)
-        .cornerRadius(14)
+        .cornerRadius(AppCornerRadius.medium)
     }
 }

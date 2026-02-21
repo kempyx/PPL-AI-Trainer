@@ -5,6 +5,7 @@ struct AIConversationSheet: View {
     @State var viewModel: AIConversationViewModel
     @State private var inputText: String = ""
     @FocusState private var inputFocused: Bool
+    @Environment(\.dependencies) private var dependencies
     
     private var visibleMessages: [ChatMessage] {
         viewModel.chatMessages.filter { $0.role != .system }
@@ -40,10 +41,38 @@ struct AIConversationSheet: View {
                             }
                             
                             if let error = viewModel.aiError {
-                                Label(aiErrorMessage(error), systemImage: "exclamationmark.triangle")
-                                    .foregroundColor(.red)
-                                    .font(.callout)
-                                    .padding(.horizontal)
+                                VStack(spacing: 12) {
+                                    Label(aiErrorMessage(error), systemImage: "exclamationmark.triangle")
+                                        .foregroundColor(.red)
+                                        .font(.callout)
+                                    
+                                    HStack(spacing: 12) {
+                                        Button {
+                                            viewModel.retryLastMessage()
+                                        } label: {
+                                            HStack {
+                                                Image(systemName: "arrow.clockwise")
+                                                Text("Retry")
+                                            }
+                                        }
+                                        .buttonStyle(SecondaryButtonStyle())
+                                        
+                                        if case .noAPIKey = error {
+                                            NavigationLink {
+                                                if let deps = dependencies {
+                                                    SettingsView(viewModel: SettingsViewModel(keychainStore: deps.keychainStore, settingsManager: deps.settingsManager))
+                                                }
+                                            } label: {
+                                                HStack {
+                                                    Image(systemName: "gear")
+                                                    Text("Settings")
+                                                }
+                                            }
+                                            .buttonStyle(SecondaryButtonStyle())
+                                        }
+                                    }
+                                }
+                                .padding()
                             }
                             
                             Color.clear.frame(height: 1).id("bottom")
@@ -456,9 +485,17 @@ struct AIConversationSheet: View {
     
     private func aiErrorMessage(_ error: AIServiceError) -> String {
         switch error {
-        case .noAPIKey: return "No API key configured. Add one in Settings."
-        case .noNetwork: return "No internet connection."
-        case .providerError(let msg): return msg
+        case .noAPIKey: return "No API key configured"
+        case .noNetwork: return "No internet connection. Try Apple Intelligence for offline AI."
+        case .providerError(let msg): 
+            if msg.contains("401") || msg.contains("403") {
+                return "Invalid API key. Check your settings."
+            } else if msg.contains("429") {
+                return "Rate limit exceeded. Try again in a moment."
+            } else if msg.contains("500") || msg.contains("503") {
+                return "AI service temporarily unavailable."
+            }
+            return "AI request failed. Please try again."
         }
     }
 }

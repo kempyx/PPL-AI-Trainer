@@ -4,11 +4,23 @@ struct ContentView: View {
     let deps: Dependencies
     @State private var appearanceMode: String
     @State private var activeLeg: ExamLeg
+    @State private var dashboardViewModel: DashboardViewModel
+    @State private var studyViewModel: StudyViewModel
+    @State private var mockExamViewModel: MockExamViewModel
+    @State private var settingsViewModel: SettingsViewModel
     
     init(deps: Dependencies) {
         self.deps = deps
         self._appearanceMode = State(initialValue: deps.settingsManager.appearanceMode)
         self._activeLeg = State(initialValue: deps.settingsManager.activeLeg)
+        
+        let mockVM = MockExamViewModel(databaseManager: deps.databaseManager, mockExamEngine: deps.mockExamEngine, settingsManager: deps.settingsManager)
+        mockVM.gamificationService = deps.gamificationService
+        
+        self._dashboardViewModel = State(initialValue: DashboardViewModel(databaseManager: deps.databaseManager, settingsManager: deps.settingsManager))
+        self._studyViewModel = State(initialValue: StudyViewModel(databaseManager: deps.databaseManager))
+        self._mockExamViewModel = State(initialValue: mockVM)
+        self._settingsViewModel = State(initialValue: SettingsViewModel(keychainStore: deps.keychainStore, settingsManager: deps.settingsManager))
     }
     
     private var colorScheme: ColorScheme? {
@@ -21,26 +33,22 @@ struct ContentView: View {
     
     var body: some View {
         TabView {
-            DashboardView(viewModel: DashboardViewModel(databaseManager: deps.databaseManager, settingsManager: deps.settingsManager))
+            DashboardView(viewModel: dashboardViewModel)
                 .tabItem {
                     Label("Dashboard", systemImage: "chart.bar.fill")
                 }
             
-            StudyView(viewModel: StudyViewModel(databaseManager: deps.databaseManager))
+            StudyView(viewModel: studyViewModel)
                 .tabItem {
                     Label("Study", systemImage: "book.fill")
                 }
             
-            MockExamView(viewModel: {
-                let vm = MockExamViewModel(databaseManager: deps.databaseManager, mockExamEngine: deps.mockExamEngine, settingsManager: deps.settingsManager)
-                vm.gamificationService = deps.gamificationService
-                return vm
-            }())
+            MockExamView(viewModel: mockExamViewModel)
                 .tabItem {
                     Label("Mock Exam", systemImage: "doc.text.fill")
                 }
             
-            SettingsView(viewModel: SettingsViewModel(keychainStore: deps.keychainStore, settingsManager: deps.settingsManager))
+            SettingsView(viewModel: settingsViewModel)
                 .tabItem {
                     Label("Settings", systemImage: "gear")
                 }

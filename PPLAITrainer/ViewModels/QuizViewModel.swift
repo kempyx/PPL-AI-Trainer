@@ -65,7 +65,7 @@ final class QuizViewModel {
     func loadQuestions(from rawQuestions: [Question]) {
         Task { @MainActor in
             do {
-                questions = try rawQuestions.map { try createPresentedQuestion(from: $0) }
+                questions = try rawQuestions.shuffled().map { try createPresentedQuestion(from: $0) }
             } catch {
                 questions = []
             }
@@ -87,7 +87,7 @@ final class QuizViewModel {
             } else if let parentCategoryId = parentCategoryId {
                 rawQuestions = try databaseManager.fetchQuestions(parentCategoryId: parentCategoryId, excludeMockOnly: true)
             }
-            questions = try rawQuestions.map { try createPresentedQuestion(from: $0) }
+            questions = try rawQuestions.shuffled().map { try createPresentedQuestion(from: $0) }
         } catch {
             questions = []
         }

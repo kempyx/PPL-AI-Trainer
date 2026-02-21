@@ -3,6 +3,7 @@ import SwiftUI
 struct MockExamSetupView: View {
     @State var viewModel: MockExamViewModel
     let leg: ExamLeg
+    @State private var isPracticeMode = false
     
     var body: some View {
         VStack(spacing: 20) {
@@ -10,10 +11,23 @@ struct MockExamSetupView: View {
                 .font(.largeTitle)
                 .bold()
             
+            Picker("Mode", selection: $isPracticeMode) {
+                Text("Timed Exam").tag(false)
+                Text("Practice").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            
             VStack(alignment: .leading, spacing: 10) {
-                Text(leg.subtitle)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                if isPracticeMode {
+                    Text("Practice mode: No timer, feedback after each question")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text(leg.subtitle)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
                 
                 Divider()
                 
@@ -21,8 +35,13 @@ struct MockExamSetupView: View {
                     HStack {
                         Text(subject.name)
                         Spacer()
-                        Text("\(subject.questionCount) q · \(subject.timeMinutes) min")
-                            .foregroundColor(.secondary)
+                        if isPracticeMode {
+                            Text("\(subject.questionCount) questions")
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("\(subject.questionCount) q · \(subject.timeMinutes) min")
+                                .foregroundColor(.secondary)
+                        }
                     }
                     .font(.subheadline)
                 }
@@ -32,8 +51,13 @@ struct MockExamSetupView: View {
                 HStack {
                     Text("Total:")
                     Spacer()
-                    Text("\(leg.totalQuestions) questions · \(leg.timeLimitMinutes) min")
-                        .bold()
+                    if isPracticeMode {
+                        Text("\(leg.totalQuestions) questions")
+                            .bold()
+                    } else {
+                        Text("\(leg.totalQuestions) questions · \(leg.timeLimitMinutes) min")
+                            .bold()
+                    }
                 }
                 
                 HStack {
@@ -45,16 +69,12 @@ struct MockExamSetupView: View {
             }
             .padding()
             .background(.regularMaterial)
-            .cornerRadius(14)
+            .cornerRadius(AppCornerRadius.medium)
             
-            Button("Start Exam") {
-                viewModel.startExam(leg: leg)
+            Button(isPracticeMode ? "Start Practice" : "Start Exam") {
+                viewModel.startExam(leg: leg, practiceMode: isPracticeMode)
             }
-            .padding()
-            .frame(maxWidth: .infinity)
-            .background(Color.blue)
-            .foregroundColor(.white)
-            .cornerRadius(8)
+            .buttonStyle(PrimaryButtonStyle())
         }
         .padding()
         .navigationDestination(isPresented: $viewModel.isExamActive) {

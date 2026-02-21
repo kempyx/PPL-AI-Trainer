@@ -33,13 +33,8 @@ struct OnboardingResultsView: View {
                 onFinish()
             } label: {
                 Text("Let's Go! 🚀")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(14)
             }
+            .buttonStyle(PrimaryButtonStyle())
             .padding(.horizontal, 32)
             .padding(.bottom, 48)
         }

@@ -3,6 +3,7 @@ import SwiftUI
 struct QuizSessionView: View {
     @Environment(\.dismiss) private var dismiss
     @State var viewModel: QuizViewModel
+    @State private var showSummary = false
 
     private var scorePercentage: Int {
         guard viewModel.questionsAnswered > 0 else { return 0 }
@@ -184,9 +185,9 @@ struct QuizSessionView: View {
             .padding(.horizontal)
 
             Button {
-                dismiss()
+                showSummary = true
             } label: {
-                Text("Done")
+                Text("View Summary")
                     .font(.headline)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -197,5 +198,23 @@ struct QuizSessionView: View {
 
             Spacer()
         }
+        .sheet(isPresented: $showSummary) {
+            PostSessionSummaryView(summary: buildSessionSummary())
+        }
+    }
+    
+    private func buildSessionSummary() -> SessionSummary {
+        let accuracy = viewModel.questionsAnswered > 0 ? Double(viewModel.correctCount) / Double(viewModel.questionsAnswered) : 0
+        
+        return SessionSummary(
+            questionsAnswered: viewModel.questionsAnswered,
+            correctAnswers: viewModel.correctCount,
+            accuracy: accuracy,
+            xpEarned: viewModel.gamificationService.sessionXP,
+            xpBreakdown: [],
+            currentStreak: viewModel.gamificationService.currentStreak,
+            categoryDeltas: [],
+            suggestedAction: .continuePractice(remaining: 0)
+        )
     }
 }

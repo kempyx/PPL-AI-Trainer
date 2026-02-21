@@ -17,13 +17,67 @@ struct StudyView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
-                    tipsCard
-                    timeBasedSessionsSection
-                    continueStudyingSection
-                    legSubjectsSection
-                    toolsSection
-                    moreSection
+                VStack(spacing: 20) {
+                    // QUICK START
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Quick Start")
+                            .font(.headline)
+                        
+                        HStack(spacing: 12) {
+                            timeButton(icon: "bolt.fill", time: "5 min", label: "Quick", type: .quickReview)
+                            timeButton(icon: "calendar", time: "10 min", label: "Daily", type: .dailyPractice)
+                            timeButton(icon: "target", time: "15 min", label: "Focused", type: .weakAreaFocus)
+                        }
+                    }
+                    
+                    // SUBJECTS
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Subjects")
+                            .font(.headline)
+                        
+                        ForEach(legSubjects, id: \.category.id) { item in
+                            NavigationLink {
+                                SubcategoryListView(viewModel: viewModel, parentId: item.category.id, parentName: item.category.name)
+                            } label: {
+                                subjectRow(item)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    
+                    // TOOLS
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Tools")
+                            .font(.headline)
+                        
+                        NavigationLink { SearchView() } label: {
+                            toolRow(icon: "magnifyingglass", title: "Search Questions")
+                        }.buttonStyle(.plain)
+                        
+                        NavigationLink { BookmarkedQuestionsView() } label: {
+                            toolRow(icon: "bookmark.fill", title: "Bookmarks")
+                        }.buttonStyle(.plain)
+                        
+                        NavigationLink { FlashcardView(sessionType: .legFocus(leg: activeLeg), leg: activeLeg) } label: {
+                            flashcardRow
+                        }.buttonStyle(.plain)
+                        
+                        if viewModel.hasWrongAnswers, let deps {
+                            NavigationLink {
+                                QuizSessionView(viewModel: makeWrongAnswersVM(deps))
+                            } label: {
+                                toolRow(icon: "xmark.circle", title: "Review Wrong Answers")
+                            }.buttonStyle(.plain)
+                        }
+                        
+                        NavigationLink { SRSReviewView(viewModel: viewModel) } label: {
+                            srsRow
+                        }.buttonStyle(.plain)
+                        
+                        NavigationLink { CategoryListView(viewModel: viewModel) } label: {
+                            toolRow(icon: "list.bullet", title: "All Subjects")
+                        }.buttonStyle(.plain)
+                    }
                 }
                 .padding()
             }
@@ -44,53 +98,7 @@ struct StudyView: View {
         }
     }
     
-    // MARK: - Tips
-    
-    private var tipsCard: some View {
-        DisclosureGroup(isExpanded: $showTips) {
-            VStack(alignment: .leading, spacing: 8) {
-                tipRow("⚡", "Pick your time budget: 5, 10, or 15 minutes")
-                tipRow("📚", "Browse subjects to study specific topics")
-                tipRow("🎯", "The app adapts to your weak areas and SRS cards")
-                tipRow("🔖", "Bookmark questions and add notes for later review")
-                tipRow("✨", "Tap the AI button after answering to get explanations")
-                tipRow("🧠", "SRS spaces out reviews so you remember long-term")
-            }
-            .padding(.top, 8)
-        } label: {
-            HStack {
-                Image(systemName: "lightbulb.fill")
-                    .foregroundColor(.yellow)
-                Text("How to Study")
-                    .font(.subheadline.weight(.medium))
-            }
-        }
-        .padding()
-        .background(.regularMaterial)
-        .cornerRadius(14)
-    }
-    
-    private func tipRow(_ emoji: String, _ text: String) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Text(emoji)
-            Text(text).font(.caption).foregroundColor(.secondary)
-        }
-    }
-    
-    // MARK: - Time-Based Sessions
-    
-    private var timeBasedSessionsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("How much time do you have?")
-                .font(.headline)
-            
-            HStack(spacing: 12) {
-                timeButton(icon: "bolt.fill", time: "5 min", label: "Quick", type: .quickReview)
-                timeButton(icon: "calendar", time: "10 min", label: "Daily", type: .dailyPractice)
-                timeButton(icon: "target", time: "15 min", label: "Focused", type: .weakAreaFocus)
-            }
-        }
-    }
+    // MARK: - Components
     
     private func timeButton(icon: String, time: String, label: String, type: SessionType) -> some View {
         NavigationLink {
@@ -116,181 +124,87 @@ struct StudyView: View {
         .buttonStyle(.plain)
     }
     
-    // MARK: - Continue Studying
+    // MARK: - Components
     
-    private var continueStudyingSection: some View {
-        Group {
-            if let subjectId = deps?.settingsManager.lastStudiedSubjectId,
-               let subjectName = deps?.settingsManager.lastStudiedSubjectName {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Or continue where you left off")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    
-                    NavigationLink {
-                        SubcategoryListView(viewModel: viewModel, parentId: subjectId, parentName: subjectName)
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "arrow.right.circle.fill")
-                                .font(.title2)
-                                .foregroundColor(.accentColor)
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(subjectName)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundColor(.primary)
-                                Text("Resume studying")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Spacer()
-                            
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        .padding()
-                        .background(.regularMaterial)
-                        .cornerRadius(14)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+    private var flashcardRow: some View {
+        HStack {
+            Image(systemName: "rectangle.portrait.on.rectangle.portrait")
+                .foregroundStyle(.white)
+            Text("Flashcards")
+                .foregroundStyle(.white)
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.7))
         }
+        .padding()
+        .background(
+            LinearGradient(
+                colors: [.purple, .blue],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .cornerRadius(12)
     }
     
-    // MARK: - Leg Subjects
+    private var srsRow: some View {
+        HStack {
+            Image(systemName: "brain.head.profile")
+            Text("SRS Review")
+            Spacer()
+            if viewModel.dueCardCount > 0 {
+                Text("\(viewModel.dueCardCount)")
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                    .background(Color.blue.opacity(0.15))
+                    .foregroundColor(.blue)
+                    .clipShape(Capsule())
+            }
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding()
+        .background(.regularMaterial)
+        .cornerRadius(14)
+    }
+    
+    private func subjectRow(_ item: CategoryWithStats) -> some View {
+        HStack(spacing: 12) {
+            Text(emojiForCategory(item.category.name))
+                .font(.title2)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.category.name)
+                    .font(.subheadline.weight(.medium))
+                if item.srsStats.masteredCount > 0 {
+                    Text("\(item.srsStats.masteredCount) mastered · \(item.stats.totalQuestions) total")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else if item.stats.answeredQuestions > 0 {
+                    Text("\(item.stats.answeredQuestions) answered · \(item.stats.totalQuestions) total")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("\(item.stats.totalQuestions) questions")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding()
+        .background(.regularMaterial)
+        .cornerRadius(14)
+    }
     
     private var legSubjects: [CategoryWithStats] {
         let legIds = Set(activeLeg.parentCategoryIds)
         return viewModel.topLevelCategories.filter { legIds.contains($0.category.id) }
-    }
-    
-    private var legSubjectsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Subjects")
-                .font(.headline)
-            
-            ForEach(legSubjects, id: \.category.id) { item in
-                NavigationLink {
-                    SubcategoryListView(viewModel: viewModel, parentId: item.category.id, parentName: item.category.name)
-                } label: {
-                    HStack(spacing: 12) {
-                        Text(emojiForCategory(item.category.name))
-                            .font(.title2)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.category.name)
-                                .font(.subheadline.weight(.medium))
-                            if item.srsStats.masteredCount > 0 {
-                                Text("\(item.srsStats.masteredCount) mastered · \(item.stats.totalQuestions) total")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            } else if item.stats.answeredQuestions > 0 {
-                                Text("\(item.stats.answeredQuestions) answered · \(item.stats.totalQuestions) total")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            } else {
-                                Text("\(item.stats.totalQuestions) questions")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding()
-                    .background(.regularMaterial)
-                    .cornerRadius(14)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-    
-    // MARK: - Tools
-    
-    private var toolsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Tools")
-                .font(.headline)
-            
-            NavigationLink { SearchView() } label: {
-                toolRow(icon: "magnifyingglass", title: "Search Questions")
-            }.buttonStyle(.plain)
-            
-            NavigationLink { BookmarkedQuestionsView() } label: {
-                toolRow(icon: "bookmark.fill", title: "Bookmarks")
-            }.buttonStyle(.plain)
-            
-            NavigationLink { FlashcardView(sessionType: .legFocus(leg: activeLeg), leg: activeLeg) } label: {
-                HStack {
-                    Image(systemName: "rectangle.portrait.on.rectangle.portrait")
-                        .foregroundStyle(.white)
-                    Text("Flashcards")
-                        .foregroundStyle(.white)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.7))
-                }
-                .padding()
-                .background(
-                    LinearGradient(
-                        colors: [.purple, .blue],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .cornerRadius(12)
-            }.buttonStyle(.plain)
-            
-            if viewModel.hasWrongAnswers, let deps {
-                NavigationLink {
-                    QuizSessionView(viewModel: makeWrongAnswersVM(deps))
-                } label: {
-                    toolRow(icon: "xmark.circle", title: "Review Wrong Answers")
-                }.buttonStyle(.plain)
-            }
-            
-            NavigationLink { SRSReviewView(viewModel: viewModel) } label: {
-                HStack {
-                    Image(systemName: "brain.head.profile")
-                    Text("SRS Review")
-                    Spacer()
-                    if viewModel.dueCardCount > 0 {
-                        Text("\(viewModel.dueCardCount)")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                            .background(Color.blue.opacity(0.15))
-                            .foregroundColor(.blue)
-                            .clipShape(Capsule())
-                    }
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding()
-                .background(.regularMaterial)
-                .cornerRadius(14)
-            }.buttonStyle(.plain)
-        }
-    }
-    
-    // MARK: - More
-    
-    private var moreSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("More")
-                .font(.headline)
-            
-            NavigationLink { CategoryListView(viewModel: viewModel) } label: {
-                toolRow(icon: "list.bullet", title: "All Subjects")
-            }.buttonStyle(.plain)
-        }
     }
     
     // MARK: - Helpers

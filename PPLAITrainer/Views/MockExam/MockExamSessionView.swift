@@ -21,10 +21,12 @@ struct MockExamSessionView: View {
                     
                     Spacer()
                     
-                    Text(timeString(from: viewModel.timeRemaining))
-                        .font(.caption.monospacedDigit())
-                        .foregroundColor(viewModel.timeRemaining < 300 ? .red : .primary)
-                        .pulse(isActive: viewModel.timeRemaining < 60)
+                    if !viewModel.isPracticeMode {
+                        Text(timeString(from: viewModel.timeRemaining))
+                            .font(.caption.monospacedDigit())
+                            .foregroundColor(viewModel.timeRemaining < 300 ? .red : .primary)
+                            .pulse(isActive: viewModel.timeRemaining < 60)
+                    }
                 }
                 
                 HStack {
@@ -33,10 +35,6 @@ struct MockExamSessionView: View {
                         .foregroundColor(.secondary)
                     
                     Spacer()
-                    
-                    Text("\(Int(viewModel.questionTimeRemaining))s")
-                        .font(.caption.monospacedDigit())
-                        .foregroundColor(viewModel.questionTimeRemaining <= 10 ? .red : .orange)
                 }
             }
             .padding(.horizontal)
@@ -162,10 +160,15 @@ struct MockExamSessionView: View {
         }
         .navigationDestination(isPresented: $showResult) {
             if let score = viewModel.currentScore {
-                MockExamScoreResultView(score: score) {
-                    showResult = false
-                    viewModel.isExamActive = false
-                }
+                MockExamScoreResultView(
+                    score: score,
+                    onDone: {
+                        showResult = false
+                        viewModel.isExamActive = false
+                    },
+                    questions: viewModel.questions,
+                    answers: viewModel.answers
+                )
             }
         }
     }
@@ -240,8 +243,6 @@ private struct QuestionOverviewSheet: View {
     private func backgroundColor(for index: Int) -> Color {
         if index == viewModel.currentIndex {
             return .blue
-        } else if index > viewModel.highestVisitedIndex {
-            return Color(.systemGray6)
         } else if viewModel.answers[viewModel.questions[index].question.id] != nil {
             return .green.opacity(0.3)
         } else {
@@ -252,8 +253,6 @@ private struct QuestionOverviewSheet: View {
     private func foregroundColor(for index: Int) -> Color {
         if index == viewModel.currentIndex {
             return .white
-        } else if index > viewModel.highestVisitedIndex {
-            return Color(.systemGray3)
         } else {
             return .primary
         }
@@ -272,7 +271,10 @@ private struct QuestionOverviewSheet: View {
 private struct MockExamScoreResultView: View {
     let score: MockExamScore
     let onDone: () -> Void
+    let questions: [PresentedQuestion]
+    let answers: [Int64: String]
     @Environment(\.dismiss) private var dismiss
+    @State private var showReview = false
 
     var body: some View {
         ScrollView {
@@ -321,20 +323,30 @@ private struct MockExamScoreResultView: View {
                 .padding()
 
                 Button {
+                    showReview = true
+                } label: {
+                    HStack {
+                        Image(systemName: "doc.text.magnifyingglass")
+                        Text("Review Answers")
+                    }
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                .padding(.horizontal)
+
+                Button {
                     onDone()
                     dismiss()
                 } label: {
                     Text("Back to Mock Exams")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
                 }
+                .buttonStyle(PrimaryButtonStyle())
                 .padding(.horizontal)
             }
         }
         .navigationTitle("Exam Result")
         .navigationBarBackButtonHidden(true)
+        .sheet(isPresented: $showReview) {
+            ExamReviewView(questions: questions, answers: answers)
+        }
     }
 }

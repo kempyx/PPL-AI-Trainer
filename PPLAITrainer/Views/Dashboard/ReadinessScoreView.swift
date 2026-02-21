@@ -32,7 +32,7 @@ struct ReadinessScoreView: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundColor(.primary)
 
-                    Text("\(totalQuestions) questions mastered")
+                    Text(readinessMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
 
@@ -64,6 +64,20 @@ struct ReadinessScoreView: View {
         if score >= 50 { return .orange }
         if score > 0 { return .red }
         return .secondary
+    }
+    
+    private var readinessMessage: String {
+        if score == 0 {
+            return "Start studying to build your score"
+        } else if score < 50 {
+            return "Keep practicing to improve"
+        } else if score < 75 {
+            return "You're making progress!"
+        } else if score < 90 {
+            return "Almost exam ready!"
+        } else {
+            return "You're exam ready! 🎉"
+        }
     }
 }
 

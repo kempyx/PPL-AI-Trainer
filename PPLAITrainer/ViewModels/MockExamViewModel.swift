@@ -24,6 +24,7 @@ final class MockExamViewModel {
     var isExamActive: Bool = false
     var examHistory: [MockExamResult] = []
     var currentScore: MockExamScore? = nil
+    var isPracticeMode: Bool = false
     
     private var timer: AnyCancellable?
     
@@ -41,8 +42,9 @@ final class MockExamViewModel {
         self.settingsManager = settingsManager
     }
     
-    func startExam(leg: ExamLeg) {
+    func startExam(leg: ExamLeg, practiceMode: Bool = false) {
         selectedLeg = leg
+        isPracticeMode = practiceMode
         Task { await startExamAsync(leg: leg) }
     }
     
@@ -63,7 +65,9 @@ final class MockExamViewModel {
             answers = [:]
             currentScore = nil
             
-            startTimer()
+            if !isPracticeMode {
+                startTimer()
+            }
         } catch {
             logger.error("Failed to start exam: \(error.localizedDescription)")
             questions = []
@@ -77,16 +81,6 @@ final class MockExamViewModel {
                 guard let self else { return }
                 if self.timeRemaining > 0 {
                     self.timeRemaining -= 1
-                    if self.questionTimeRemaining > 0 {
-                        self.questionTimeRemaining -= 1
-                    } else {
-                        // Auto-advance or submit when per-question time expires
-                        if self.currentIndex < self.questions.count - 1 {
-                            self.nextQuestion()
-                        } else {
-                            self.submitExam()
-                        }
-                    }
                 } else {
                     self.submitExam()
                 }

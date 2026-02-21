@@ -12,7 +12,16 @@ struct XPBarView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        NavigationLink {
+            AchievementsView()
+        } label: {
+            achievementContent
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private var achievementContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: currentLevel.icon)
                     .font(.title2)
@@ -21,9 +30,15 @@ struct XPBarView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(currentLevel.title)
                         .font(.headline)
-                    Text("\(totalXP) XP")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    if let next = nextLevel {
+                        Text("\(totalXP) / \(next.requiredXP) XP to \(next.title)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("\(totalXP) XP · Max Rank")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
                 Spacer()
@@ -64,6 +79,6 @@ struct XPBarView: View {
         }
         .padding()
         .background(.regularMaterial)
-        .cornerRadius(14)
+        .cornerRadius(AppCornerRadius.medium)
     }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 struct PostSessionSummaryView: View {
     @Environment(\.dismiss) private var dismiss
     let summary: SessionSummary
+    var onReviewWrongAnswers: (() -> Void)? = nil
     
     private var scorePercentage: Int {
         guard summary.questionsAnswered > 0 else { return 0 }
@@ -54,6 +55,19 @@ struct PostSessionSummaryView: View {
                             Text("You got \(summary.questionsAnswered - summary.correctAnswers) question\(summary.questionsAnswered - summary.correctAnswers == 1 ? "" : "s") wrong. Review them to master the material.")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
+                            
+                            if let onReview = onReviewWrongAnswers {
+                                Button {
+                                    dismiss()
+                                    onReview()
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "arrow.clockwise")
+                                        Text("Review Wrong Answers")
+                                    }
+                                }
+                                .buttonStyle(SecondaryButtonStyle())
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .cardStyle()

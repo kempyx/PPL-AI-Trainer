@@ -9,13 +9,16 @@ struct OnboardingView: View {
             WelcomePageView(onContinue: { viewModel.nextPage() })
                 .tag(0)
             
+            FeatureShowcaseView(onContinue: { viewModel.nextPage() })
+                .tag(1)
+            
             ExamDatePickerView(
                 examDateLeg1: $viewModel.examDateLeg1,
                 examDateLeg2: $viewModel.examDateLeg2,
                 examDateLeg3: $viewModel.examDateLeg3,
                 onContinue: { viewModel.nextPage() }
             )
-            .tag(1)
+            .tag(2)
             
             DailyGoalPickerView(
                 selectedGoal: $viewModel.dailyGoalTarget,
@@ -25,7 +28,7 @@ struct OnboardingView: View {
                     viewModel.nextPage()
                 }
             )
-            .tag(2)
+            .tag(3)
             
             OnboardingResultsView(
                 percentage: viewModel.baselinePercentage,
@@ -34,7 +37,7 @@ struct OnboardingView: View {
                     onComplete()
                 }
             )
-            .tag(3)
+            .tag(4)
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
         .animation(.easeInOut, value: viewModel.currentPage)
