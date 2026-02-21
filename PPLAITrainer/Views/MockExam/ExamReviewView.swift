@@ -4,25 +4,32 @@ struct ExamReviewView: View {
     @Environment(\.dismiss) private var dismiss
     let questions: [PresentedQuestion]
     let answers: [Int64: String]
+
+    private struct ReviewItem: Identifiable {
+        let id: Int64
+        let question: PresentedQuestion
+        let isCorrect: Bool
+    }
     
-    private var groupedQuestions: [(category: String, questions: [(question: PresentedQuestion, isCorrect: Bool)])] {
-        var grouped: [String: [(PresentedQuestion, Bool)]] = [:]
+    private var groupedQuestions: [(category: String, questions: [ReviewItem])] {
+        var grouped: [String: [ReviewItem]] = [:]
         
         for question in questions {
             let categoryName = question.categoryName
             let studentAnswer = answers[question.question.id] ?? ""
             let isCorrect = studentAnswer == question.question.correct
+            let item = ReviewItem(id: question.question.id, question: question, isCorrect: isCorrect)
             
             if grouped[categoryName] == nil {
                 grouped[categoryName] = []
             }
-            grouped[categoryName]?.append((question, isCorrect))
+            grouped[categoryName]?.append(item)
         }
         
         return grouped.map { (category: $0.key, questions: $0.value) }
             .sorted { first, second in
-                let firstCorrect = first.questions.filter { $0.1 }.count
-                let secondCorrect = second.questions.filter { $0.1 }.count
+                let firstCorrect = first.questions.filter(\.isCorrect).count
+                let secondCorrect = second.questions.filter(\.isCorrect).count
                 return firstCorrect < secondCorrect
             }
     }
@@ -32,7 +39,7 @@ struct ExamReviewView: View {
             List {
                 ForEach(groupedQuestions, id: \.category) { group in
                     Section {
-                        ForEach(group.questions, id: \.question.question.id) { item in
+                        ForEach(group.questions) { item in
                             QuestionReviewRow(
                                 question: item.question,
                                 studentAnswer: answers[item.question.question.id] ?? "",
@@ -43,7 +50,7 @@ struct ExamReviewView: View {
                         HStack {
                             Text(group.category)
                             Spacer()
-                            let correct = group.questions.filter { $0.1 }.count
+                            let correct = group.questions.filter(\.isCorrect).count
                             Text("\(correct)/\(group.questions.count)")
                                 .foregroundColor(correct == group.questions.count ? .green : .orange)
                         }
