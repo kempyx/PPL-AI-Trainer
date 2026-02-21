@@ -15,6 +15,7 @@ final class MockExamViewModel {
     var selectedLeg: ExamLeg? = nil
     var questions: [PresentedQuestion] = []
     var answers: [Int64: String] = [:]
+    var flaggedQuestions: Set<Int> = []
     var currentIndex: Int = 0
     var highestVisitedIndex: Int = 0
     var startTime: Date? = nil

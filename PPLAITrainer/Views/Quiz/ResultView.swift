@@ -60,16 +60,22 @@ struct ResultView: View {
                 }
                 
                 if let explanation = question.question.explanation, !explanation.isEmpty {
-                    VStack(alignment: .leading) {
-                        Text("Explanation")
-                            .font(.headline)
-                        Text(explanation)
-                            .textSelection(.enabled)
-                            .padding()
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(8)
-                    }
-                } else {
+                    let isCorrect = viewModel.selectedAnswer == question.correctAnswerIndex
+                    DisclosureGroup(
+                        isExpanded: .constant(!isCorrect),
+                        content: {
+                            Text(explanation)
+                                .textSelection(.enabled)
+                                .padding()
+                                .background(Color.gray.opacity(0.1))
+                                .cornerRadius(AppCornerRadius.small)
+                        },
+                        label: {
+                            Text("Explanation")
+                                .font(.headline)
+                        }
+                    )
+                } else if viewModel.selectedAnswer != question.correctAnswerIndex {
                     Text("No explanation available.")
                         .foregroundColor(.gray)
                         .padding()
@@ -96,11 +102,7 @@ struct ResultView: View {
                 Button("Next Question") {
                     viewModel.nextQuestion()
                 }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(8)
+                .buttonStyle(PrimaryButtonStyle())
             }
             .padding()
         }

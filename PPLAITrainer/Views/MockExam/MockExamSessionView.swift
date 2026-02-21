@@ -120,6 +120,20 @@ struct MockExamSessionView: View {
                     Image(systemName: "square.grid.3x3")
                 }
             }
+            
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    if viewModel.flaggedQuestions.contains(viewModel.currentIndex) {
+                        viewModel.flaggedQuestions.remove(viewModel.currentIndex)
+                    } else {
+                        viewModel.flaggedQuestions.insert(viewModel.currentIndex)
+                    }
+                } label: {
+                    Image(systemName: viewModel.flaggedQuestions.contains(viewModel.currentIndex) ? "flag.fill" : "flag")
+                        .foregroundColor(viewModel.flaggedQuestions.contains(viewModel.currentIndex) ? .orange : .primary)
+                }
+            }
+            
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Abandon") {
                     showAbandonAlert = true
@@ -178,28 +192,35 @@ private struct QuestionOverviewSheet: View {
                     HStack(spacing: 16) {
                         legend(color: .blue, label: "Current")
                         legend(color: .green, label: "Answered")
+                        legend(color: .orange, label: "Flagged")
                         legend(color: Color(.systemGray4), label: "Skipped")
-                        legend(color: Color(.systemGray6), label: "Not seen")
                     }
                     .font(.caption)
                     .padding(.horizontal)
                     
                     LazyVGrid(columns: columns, spacing: 8) {
                         ForEach(0..<viewModel.questions.count, id: \.self) { index in
-                            let visited = index <= viewModel.highestVisitedIndex
                             Button {
                                 viewModel.currentIndex = index
                                 viewModel.questionTimeRemaining = 75
                                 isPresented = false
                             } label: {
-                                Text("\(index + 1)")
-                                    .font(.callout.monospacedDigit())
-                                    .frame(width: 44, height: 44)
-                                    .background(backgroundColor(for: index))
-                                    .foregroundStyle(foregroundColor(for: index))
-                                    .cornerRadius(8)
+                                ZStack(alignment: .topTrailing) {
+                                    Text("\(index + 1)")
+                                        .font(.callout.monospacedDigit())
+                                        .frame(width: 44, height: 44)
+                                        .background(backgroundColor(for: index))
+                                        .foregroundStyle(foregroundColor(for: index))
+                                        .cornerRadius(8)
+                                    
+                                    if viewModel.flaggedQuestions.contains(index) {
+                                        Image(systemName: "flag.fill")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.orange)
+                                            .offset(x: 2, y: -2)
+                                    }
+                                }
                             }
-                            .disabled(!visited)
                         }
                     }
                     .padding(.horizontal)

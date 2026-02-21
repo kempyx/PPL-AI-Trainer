@@ -17,6 +17,9 @@ struct QuestionView: View {
                         ZoomableImageView(uiImage: uiImage)
                     }
                 }
+                
+                Divider()
+                    .padding(.vertical, 8)
 
                 ForEach(0..<question.shuffledAnswers.count, id: \.self) { index in
                     Button {
@@ -33,8 +36,8 @@ struct QuestionView: View {
                             }
                         }
                         .padding()
-                        .background(selectedAnswer == index ? Color.blue.opacity(0.1) : Color.gray.opacity(0.1))
-                        .cornerRadius(8)
+                        .background(selectedAnswer == index ? Color.blue.opacity(0.15) : Color.gray.opacity(0.1))
+                        .cornerRadius(AppCornerRadius.small)
                     }
                     .buttonStyle(.plain)
                 }

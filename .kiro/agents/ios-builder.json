@@ -1,0 +1,26 @@
+{
+  "name": "ios-builder",
+  "description": "iOS Swift developer focused on single-file modifications",
+  "prompt": "file://.kiro/shared/IOS_BUILDER.md",
+  "tools": ["*"],
+  "allowedTools": [
+    "fs_read",
+    "fs_write", 
+    "code",
+    "grep",
+    "glob",
+    "execute_bash"
+  ],
+  "toolsSettings": {
+    "fs_write": {
+      "allowedPaths": ["**/*.swift", "**/*.md"]
+    },
+    "execute_bash": {
+      "autoAllowReadonly": true
+    }
+  },
+  "resources": [
+    "file://CLAUDE.md",
+    "file://PreviewHelpers.swift"
+  ]
+}

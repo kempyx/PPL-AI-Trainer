@@ -45,21 +45,26 @@ struct PostSessionSummaryView: View {
                         statRow(icon: "flame.fill", label: "Streak", value: "\(summary.currentStreak)")
                         statRow(icon: "percent", label: "Accuracy", value: "\(Int(summary.accuracy * 100))%")
                     }
-                    .padding()
-                    .background(.regularMaterial)
-                    .cornerRadius(14)
+                    .cardStyle()
+                    
+                    if summary.correctAnswers < summary.questionsAnswered {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Keep Improving!")
+                                .font(.headline)
+                            Text("You got \(summary.questionsAnswered - summary.correctAnswers) question\(summary.questionsAnswered - summary.correctAnswers == 1 ? "" : "s") wrong. Review them to master the material.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .cardStyle()
+                    }
                     
                     Button {
                         dismiss()
                     } label: {
                         Text("Done")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .cornerRadius(12)
                     }
+                    .buttonStyle(PrimaryButtonStyle())
                 }
                 .padding()
             }
