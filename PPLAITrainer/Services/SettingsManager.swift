@@ -40,12 +40,11 @@ final class SettingsManager {
       • - or • for bullet lists
       • ### for section headers (if needed)
       • > for important notes/quotes
-    - For mathematical formulas, use Unicode symbols (NOT LaTeX):
-      • Use ½ instead of \\frac{1}{2}
-      • Use ρ, α, β for Greek letters
-      • Use ² ³ for superscripts (V² not V^2)
-      • Use × ÷ ± for operators
-      • Example: "Q = ½ρV²" not "$Q = \\frac{1}{2} \\rho V^2$"
+    - For mathematical formulas, prefer LaTeX math notation with delimiters:
+      • Inline math: $V = d/t$ or \\(V = d/t\\)
+      • Display math: $$L = \\frac{1}{2}\\rho V^2 S C_L$$ or \\[L = \\frac{1}{2}\\rho V^2 S C_L\\]
+      • Keep formulas readable and include variable meaning when helpful
+      • Unicode symbols are fine too (for example ρ, α, β, ±)
     - State the correct answer and why in one sentence
     - Briefly note why their answer was wrong (if applicable)
     - Only elaborate if they ask follow-up questions

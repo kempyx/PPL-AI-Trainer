@@ -290,9 +290,7 @@ struct QuizSessionView: View {
                         Text("Hint")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
-                        Text(hint)
-                            .font(.subheadline)
-                            .textSelection(.enabled)
+                        AIMarkdownMathView(content: hint)
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)

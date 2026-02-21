@@ -164,8 +164,7 @@ struct ResultView: View {
                             VStack(alignment: .leading) {
                                 Text("AI Response")
                                     .font(.headline)
-                                Text(response)
-                                    .textSelection(.enabled)
+                                AIMarkdownMathView(content: response)
                                     .padding()
                                     .background(Color.purple.opacity(0.1))
                                     .cornerRadius(AppCornerRadius.small)
@@ -178,8 +177,7 @@ struct ResultView: View {
                     VStack(alignment: .leading) {
                         Text("Mnemonic")
                             .font(.headline)
-                        Text(mnemonic)
-                            .textSelection(.enabled)
+                        AIMarkdownMathView(content: mnemonic)
                             .padding()
                             .background(Color.blue.opacity(0.1))
                             .cornerRadius(8)
@@ -209,8 +207,7 @@ struct ResultView: View {
                             VStack(alignment: .leading) {
                                 Text("Hint")
                                     .font(.headline)
-                                Text(hint)
-                                    .textSelection(.enabled)
+                                AIMarkdownMathView(content: hint)
                                     .padding()
                                     .background(Color.orange.opacity(0.1))
                                     .cornerRadius(AppCornerRadius.small)
