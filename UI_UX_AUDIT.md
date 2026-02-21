@@ -49,7 +49,7 @@ If this section conflicts with historical status tables below, **this section wi
 |----------|----|-------|--------|-------|
 | 1 | RESTORE-3 | Session persistence hardening + resume UX verification | [x] DONE | Added back-navigation save in `QuizSessionView`; wired Study resume button to navigate with restored VM; completion still clears saved session |
 | 2 | RESTORE-4 | Hint system UX + caching verification | [x] DONE | Verified `ResultView` exposes "Get a Hint" CTA and `QuizViewModel.getQuestionHint()` reads/writes `AIResponseCache` before network call |
-| 3 | RESTORE-5 | Inline AI actions UX + continuity verification | [ ] TODO | Explain/Simplify/Analogy/Mistakes actions in result flow |
+| 3 | RESTORE-5 | Inline AI actions UX + continuity verification | [x] DONE | Verified `ResultView` exposes Explain/Simplify/Analogy/Mistakes buttons and `requestInlineAI` appends responses into shared AI conversation history |
 | 4 | RESTORE-6 | Image attachment context for AI | [ ] TODO | Include attachment context in AI prompts (text + multimodal-aware path) |
 | 5 | RESTORE-7 | Image/video prompt generation restore | [ ] TODO | Restore prompt generation entry points and prompt composition rules |
 | 6 | RESTORE-8 | Category progress parity regression check | [ ] TODO | Verify Dashboard and Study progress semantics remain aligned |
