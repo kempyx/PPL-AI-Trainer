@@ -332,15 +332,15 @@ private enum AIMathMarkdownNormalizer {
 
         output = replaceDelimitedMath(
             in: output,
-            openDelimiter: "\\\\[",
-            closeDelimiter: "\\\\]",
+            openDelimiter: "\\[",
+            closeDelimiter: "\\]",
             wrapWithDisplayMath: true
         )
 
         output = replaceDelimitedMath(
             in: output,
-            openDelimiter: "\\\\(",
-            closeDelimiter: "\\\\)",
+            openDelimiter: "\\(",
+            closeDelimiter: "\\)",
             wrapWithDisplayMath: false
         )
 
@@ -431,7 +431,9 @@ private enum AIMathMarkdownNormalizer {
         closeDelimiter: String,
         wrapWithDisplayMath: Bool
     ) -> String {
-        let pattern = "\(openDelimiter)([\\s\\S]*?)\(closeDelimiter)"
+        let escapedOpenDelimiter = NSRegularExpression.escapedPattern(for: openDelimiter)
+        let escapedCloseDelimiter = NSRegularExpression.escapedPattern(for: closeDelimiter)
+        let pattern = "\(escapedOpenDelimiter)([\\s\\S]*?)\(escapedCloseDelimiter)"
         guard let regex = try? NSRegularExpression(pattern: pattern) else {
             return source
         }
