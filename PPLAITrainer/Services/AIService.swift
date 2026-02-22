@@ -252,11 +252,12 @@ final class AIService: AIServiceProtocol {
             let variantSuffix = imageCount > 1
                 ? "\n\nCreate a distinct visual variation \(idx + 1) of \(imageCount)."
                 : ""
+            let combinedPrompt = deepHintMultimodalDirective + "\n\n" + prompt + variantSuffix
             let result = try await openAIHintCall(
                 model: model,
                 apiKey: apiKey,
                 systemPrompt: systemPrompt,
-                prompt: "\(prompt)\(variantSuffix)",
+                prompt: combinedPrompt,
                 questionImages: questionImages,
                 enableImageGeneration: true
             )
@@ -266,6 +267,17 @@ final class AIService: AIServiceProtocol {
             if let firstImage = result.images.first {
                 generatedImages.append(firstImage)
             }
+        }
+
+        if responseText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true {
+            let textOnly = try await makeOpenAITextOnlyHint(
+                model: model,
+                apiKey: apiKey,
+                systemPrompt: systemPrompt,
+                prompt: deepHintMultimodalDirective + "\n\n" + prompt,
+                questionImages: questionImages
+            )
+            responseText = textOnly.text
         }
 
         let finalText = responseText?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -482,10 +494,11 @@ final class AIService: AIServiceProtocol {
             let variantSuffix = imageCount > 1
                 ? "\n\nCreate a distinct visual variation \(idx + 1) of \(imageCount)."
                 : ""
+            let combinedPrompt = "\(systemPrompt)\n\n\(deepHintMultimodalDirective)\n\n\(prompt)\(variantSuffix)"
             let result = try await geminiHintCall(
                 config: hintConfig,
                 apiKey: apiKey,
-                combinedPrompt: "\(systemPrompt)\n\n\(prompt)\(variantSuffix)",
+                combinedPrompt: combinedPrompt,
                 questionImages: questionImages,
                 responseModalities: ["TEXT", "IMAGE"],
                 parseImages: true
@@ -498,9 +511,28 @@ final class AIService: AIServiceProtocol {
             }
         }
 
+        if responseText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true {
+            let textOnly = try await makeGeminiTextOnlyHint(
+                config: config,
+                apiKey: apiKey,
+                systemPrompt: systemPrompt,
+                prompt: deepHintMultimodalDirective + "\n\n" + prompt,
+                questionImages: questionImages
+            )
+            responseText = textOnly.text
+        }
+
         let finalText = responseText?.trimmingCharacters(in: .whitespacesAndNewlines)
         let fallback = "Use the key concept in the stem and eliminate options that conflict with basic flight principles."
         return AIHintResponse(text: (finalText?.isEmpty == false) ? (finalText ?? fallback) : fallback, images: generatedImages)
+    }
+
+    private var deepHintMultimodalDirective: String {
+        """
+        Deep-hint output contract:
+        - Return BOTH modalities in the same response: (1) a concise textual hint and (2) visual diagram output.
+        - The text hint must never be empty and should stay exam-focused.
+        """
     }
 
     private func makeGeminiTextOnlyHint(
