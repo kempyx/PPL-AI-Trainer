@@ -20,7 +20,14 @@ struct ContentView: View {
         self._dashboardViewModel = State(initialValue: DashboardViewModel(databaseManager: deps.databaseManager, settingsManager: deps.settingsManager))
         self._studyViewModel = State(initialValue: StudyViewModel(databaseManager: deps.databaseManager, settingsManager: deps.settingsManager))
         self._mockExamViewModel = State(initialValue: mockVM)
-        self._settingsViewModel = State(initialValue: SettingsViewModel(keychainStore: deps.keychainStore, settingsManager: deps.settingsManager))
+        self._settingsViewModel = State(initialValue: SettingsViewModel(
+            keychainStore: deps.keychainStore,
+            settingsManager: deps.settingsManager,
+            availableDatasets: deps.availableDatasets,
+            activeDatasetId: deps.activeDataset.id,
+            activeProfileId: deps.activeProfileId,
+            switchDataset: deps.switchDataset
+        ))
     }
     
     private var colorScheme: ColorScheme? {

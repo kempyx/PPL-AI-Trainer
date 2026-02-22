@@ -6,8 +6,11 @@ final class SettingsManager {
     private enum Keys {
         static let selectedProvider = "selectedProvider"
         static let aiEnabled = "aiEnabled"
+        static let hintImageCount = "hintImageCount"
         static let confirmBeforeSending = "confirmBeforeSending"
         static let showPremiumContent = "showPremiumContent"
+        static let activeDatasetId = "activeDatasetId"
+        static let profileIdsByDataset = "profileIdsByDataset"
         static let appearanceMode = "appearanceMode"
         static let systemPrompt = "systemPrompt"
         static let aiPromptOverrides = "aiPromptOverrides"
@@ -59,6 +62,7 @@ final class SettingsManager {
         case quickActionAnalogy
         case quickActionMistakes
         case hintRequest
+        case deepHintRequest
         case inlineExplain
         case inlineSimplify
         case inlineAnalogy
@@ -76,7 +80,8 @@ final class SettingsManager {
         .quickActionAnalogy: "Give me a real-world analogy to help me understand this concept.",
         .quickActionMistakes: "What do students commonly get wrong about this? What should I watch out for?",
         .hintRequest: """
-        You are a flight instructor. Give a brief hint to help the student figure out the answer without revealing it directly.
+        You are a flight instructor helping a student solve a PPL theory question.
+        Give a concise text-only hint that guides the student toward the right reasoning without revealing the answer directly.
 
         Question: {{question}}
 
@@ -86,9 +91,36 @@ final class SettingsManager {
         C. {{choiceC}}
         D. {{choiceD}}
 
-        Correct answer: {{correctAnswer}}
+        Correct answer text (never reveal directly): {{correctAnswer}}
 
-        Provide a helpful hint that guides the student toward the correct answer without stating it explicitly.
+        Requirements:
+        - Text only, no images.
+        - Max 3 short sentences.
+        - Do not reference answer letters (A/B/C/D); refer only to concept wording.
+        - Do not state the correct answer text verbatim.
+        """,
+        .deepHintRequest: """
+        You are a flight instructor helping a student solve a PPL theory question.
+        Provide a deeper multimodal hint with concise text plus visual support.
+
+        Question: {{question}}
+
+        Choices:
+        A. {{choiceA}}
+        B. {{choiceB}}
+        C. {{choiceC}}
+        D. {{choiceD}}
+
+        Correct answer text (never reveal directly): {{correctAnswer}}
+        Question image context: {{questionImageContext}}
+        Requested image count: {{imageCount}}
+
+        Requirements:
+        - Text hint: max 4 short sentences, more detailed than a normal hint.
+        - Generate up to {{imageCount}} simple educational diagram image(s) that help reasoning.
+        - Keep visuals schematic and instructional: clear labels, arrows, short callouts, high contrast, minimal clutter.
+        - Do not reference answer letters (A/B/C/D); refer only to concept wording.
+        - Do not state the correct answer text verbatim.
         """,
         .inlineExplain: "Explain this concept in more detail, focusing on the aviation principles involved.\n\n{{context}}",
         .inlineSimplify: "Simplify this explanation using plain language that a beginner pilot can understand.\n\n{{context}}",
@@ -120,6 +152,17 @@ final class SettingsManager {
         get { defaults.bool(forKey: Keys.aiEnabled) }
         set { defaults.set(newValue, forKey: Keys.aiEnabled) }
     }
+
+    var hintImageCount: Int {
+        get {
+            let stored = defaults.integer(forKey: Keys.hintImageCount)
+            if stored == 0 { return 1 }
+            return max(1, min(3, stored))
+        }
+        set {
+            defaults.set(max(1, min(3, newValue)), forKey: Keys.hintImageCount)
+        }
+    }
     
     var confirmBeforeSending: Bool {
         get { defaults.bool(forKey: Keys.confirmBeforeSending) }
@@ -137,6 +180,27 @@ final class SettingsManager {
     var appearanceMode: String {
         get { defaults.string(forKey: Keys.appearanceMode) ?? "system" }
         set { defaults.set(newValue, forKey: Keys.appearanceMode) }
+    }
+
+    var activeDatasetId: String? {
+        get { defaults.string(forKey: Keys.activeDatasetId) }
+        set {
+            defaults.set(newValue, forKey: Keys.activeDatasetId)
+            notifyChange()
+        }
+    }
+
+    func profileId(for datasetId: String) -> String {
+        if let profile = profileIdsByDataset[datasetId], !profile.isEmpty {
+            return profile
+        }
+        return datasetId
+    }
+
+    func setProfileId(_ profileId: String, for datasetId: String) {
+        var profiles = profileIdsByDataset
+        profiles[datasetId] = profileId
+        defaults.set(profiles, forKey: Keys.profileIdsByDataset)
     }
     
     var systemPrompt: String {
@@ -371,5 +435,9 @@ final class SettingsManager {
         input.utf8.reduce(5381) { (hash, char) in
             ((hash << 5) &+ hash) &+ UInt64(char)
         }
+    }
+
+    private var profileIdsByDataset: [String: String] {
+        defaults.dictionary(forKey: Keys.profileIdsByDataset) as? [String: String] ?? [:]
     }
 }

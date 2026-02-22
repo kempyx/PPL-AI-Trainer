@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct QuizSessionView: View {
     @Environment(\.dismiss) private var dismiss
@@ -7,6 +8,7 @@ struct QuizSessionView: View {
     @State private var showSummary = false
     @State private var reviewWrongAnswersVM: QuizViewModel?
     @State private var autoSubmitTask: Task<Void, Never>?
+    @State private var hintSheetDetent: PresentationDetent = .fraction(0.45)
 
     private var scorePercentage: Int {
         guard viewModel.questionsAnswered > 0 else { return 0 }
@@ -117,14 +119,15 @@ struct QuizSessionView: View {
             }
         }
         .sheet(isPresented: $viewModel.showAIResponseSheet) {
-            QuickAIResponseSheet(
-                title: viewModel.aiResponseSheetTitle,
-                isLoading: viewModel.isLoadingAIResponseSheet,
-                content: viewModel.aiResponseSheetBody
-            )
-            .presentationDetents([.fraction(0.45), .medium])
-            .presentationBackground(.ultraThinMaterial)
-            .presentationDragIndicator(.visible)
+            aiResponseSheetContent
+                .presentationDetents(sheetDetents, selection: $hintSheetDetent)
+                .presentationBackground(.ultraThinMaterial)
+                .presentationDragIndicator(.visible)
+        }
+        .onChange(of: viewModel.showAIResponseSheet) { _, isPresented in
+            if isPresented && viewModel.aiResponseSheetTitle == "Hint" {
+                hintSheetDetent = .fraction(0.45)
+            }
         }
         .navigationDestination(isPresented: Binding(
             get: { reviewWrongAnswersVM != nil },
@@ -222,6 +225,29 @@ struct QuizSessionView: View {
         max(viewModel.questionsAnswered - viewModel.correctCount, 0)
     }
 
+    @ViewBuilder
+    private var aiResponseSheetContent: some View {
+        if let payload = viewModel.aiHintPayload {
+            HintResponseSheet(
+                title: viewModel.aiResponseSheetTitle,
+                payload: payload,
+                detentSelection: $hintSheetDetent
+            ) {
+                viewModel.regenerateHint()
+            }
+        } else {
+            QuickAIResponseSheet(
+                title: viewModel.aiResponseSheetTitle,
+                isLoading: viewModel.isLoadingAIResponseSheet,
+                content: viewModel.aiResponseSheetBody
+            )
+        }
+    }
+
+    private var sheetDetents: Set<PresentationDetent> {
+        [.fraction(0.45), .medium, .large]
+    }
+
     private var selectedExplainBinding: Binding<String?> {
         Binding(
             get: { viewModel.selectedExplainText },
@@ -233,26 +259,50 @@ struct QuizSessionView: View {
         VStack(spacing: 8) {
             if isAIAvailable,
                !viewModel.hasSubmitted {
-                HStack(spacing: 8) {
-                    Button {
-                        viewModel.showHintSheet()
-                    } label: {
-                        compactActionLabel("Hint", systemImage: "lightbulb", color: .orange)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Get hint")
-                    .accessibilityHint("Get guidance without revealing the answer")
-
-                    if let selected = viewModel.selectedExplainText, !selected.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
                         Button {
-                            viewModel.explainSelectedText()
+                            viewModel.showHintSheet(mode: .text)
                         } label: {
-                            compactActionLabel("Explain", systemImage: "text.quote", color: .blue)
+                            compactActionLabel("Hint", systemImage: "lightbulb", color: .orange)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Explain selected text")
-                        .accessibilityHint("Ask AI to explain the selected aviation term in context")
+                        .disabled(viewModel.isLoadingHint)
+                        .accessibilityLabel("Get hint")
+                        .accessibilityHint("Generate a concise text hint")
+
+                        Button {
+                            viewModel.showHintSheet(mode: .deep)
+                        } label: {
+                            compactActionLabel("Deep Hint", systemImage: "sparkles", color: .indigo)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(viewModel.isLoadingHint)
+                        .accessibilityLabel("Get deep hint")
+                        .accessibilityHint("Generate a deeper multimodal hint")
+
+                        if let selected = viewModel.selectedExplainText, !selected.isEmpty {
+                            Button {
+                                viewModel.explainSelectedText()
+                            } label: {
+                                compactActionLabel("Explain", systemImage: "text.quote", color: .blue)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Explain selected text")
+                            .accessibilityHint("Ask AI to explain the selected aviation term in context")
+                        }
                     }
+                }
+                .padding(.horizontal)
+            }
+
+            if viewModel.isLoadingHint {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(viewModel.isGeneratingVisualHint ? "Building hint and visual…" : "Building hint…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal)
             }
@@ -368,5 +418,56 @@ private struct QuickAIResponseSheet: View {
             }
         }
         .padding()
+    }
+}
+
+private struct HintResponseSheet: View {
+    let title: String
+    let payload: AIHintPayload
+    @Binding var detentSelection: PresentationDetent
+    let onRegenerate: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Label(title, systemImage: "lightbulb")
+                    .font(.headline)
+                Spacer()
+                Button {
+                    detentSelection = isExpanded ? .fraction(0.45) : .large
+                } label: {
+                    Image(systemName: isExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .accessibilityLabel(isExpanded ? "Minimize hint" : "Maximize hint")
+                Button("Regenerate") {
+                    onRegenerate()
+                }
+                .font(.subheadline.weight(.semibold))
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    AIMarkdownMathView(content: payload.text)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if !payload.images.isEmpty {
+                        Divider()
+                        Text("Visual Hint")
+                            .font(.subheadline.weight(.semibold))
+                        ForEach(payload.images) { image in
+                            if let uiImage = UIImage(contentsOfFile: image.path) {
+                                ZoomableImageView(uiImage: uiImage)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding()
+    }
+
+    private var isExpanded: Bool {
+        detentSelection == .large
     }
 }

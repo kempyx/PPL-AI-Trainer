@@ -13,6 +13,7 @@ final class QuizViewModel {
     let gamificationService: GamificationService
     private let hapticService: HapticService
     private let soundService: SoundService
+    private let questionAssetProvider: QuestionAssetProviding
     
     var questions: [PresentedQuestion] = []
     var currentIndex: Int = 0
@@ -24,7 +25,10 @@ final class QuizViewModel {
     
     var aiMnemonic: String? = nil
     var aiHint: String? = nil
+    var aiHintPayload: AIHintPayload? = nil
     var isLoadingHint: Bool = false
+    var isGeneratingVisualHint: Bool = false
+    var activeHintMode: HintMode = .text
     var aiInlineResponse: String? = nil
     var isLoadingInlineAI: Bool = false
     var selectedExplainText: String? = nil
@@ -61,6 +65,25 @@ final class QuizViewModel {
             }
         }
     }
+
+    enum HintMode: String {
+        case text
+        case deep
+
+        var title: String {
+            switch self {
+            case .text: return "Hint"
+            case .deep: return "Deep Hint"
+            }
+        }
+
+        var promptKey: SettingsManager.AIPromptKey {
+            switch self {
+            case .text: return .hintRequest
+            case .deep: return .deepHintRequest
+            }
+        }
+    }
     
     // Animation state
     var shakeIncorrect: Int = 0
@@ -82,7 +105,16 @@ final class QuizViewModel {
         questions.count - currentIndex
     }
     
-    init(databaseManager: DatabaseManaging, srsEngine: SRSEngine, aiService: AIServiceProtocol, settingsManager: SettingsManager, gamificationService: GamificationService, hapticService: HapticService, soundService: SoundService) {
+    init(
+        databaseManager: DatabaseManaging,
+        srsEngine: SRSEngine,
+        aiService: AIServiceProtocol,
+        settingsManager: SettingsManager,
+        gamificationService: GamificationService,
+        hapticService: HapticService,
+        soundService: SoundService,
+        questionAssetProvider: QuestionAssetProviding
+    ) {
         self.databaseManager = databaseManager
         self.srsEngine = srsEngine
         self.aiService = aiService
@@ -90,6 +122,7 @@ final class QuizViewModel {
         self.gamificationService = gamificationService
         self.hapticService = hapticService
         self.soundService = soundService
+        self.questionAssetProvider = questionAssetProvider
         self.aiConversation = AIConversationViewModel(
             aiService: aiService,
             settingsManager: settingsManager,
@@ -236,7 +269,10 @@ final class QuizViewModel {
         hasSubmitted = false
         aiMnemonic = nil
         aiHint = nil
+        aiHintPayload = nil
         isLoadingHint = false
+        isGeneratingVisualHint = false
+        activeHintMode = .text
         aiInlineResponse = nil
         isLoadingInlineAI = false
         showCorrectFlash = false
@@ -260,7 +296,10 @@ final class QuizViewModel {
         hasSubmitted = false
         aiMnemonic = nil
         aiHint = nil
+        aiHintPayload = nil
         isLoadingHint = false
+        isGeneratingVisualHint = false
+        activeHintMode = .text
         aiInlineResponse = nil
         isLoadingInlineAI = false
         showCorrectFlash = false
@@ -325,87 +364,148 @@ final class QuizViewModel {
         return false
     }
 
-    private func mimeType(for filename: String) -> String {
-        switch (filename as NSString).pathExtension.lowercased() {
-        case "png": return "image/png"
-        case "jpg", "jpeg": return "image/jpeg"
-        case "webp": return "image/webp"
-        default: return "application/octet-stream"
-        }
-    }
-
     private func base64DataURL(for filename: String) -> String? {
-        let nsFilename = filename as NSString
-        let name = nsFilename.deletingPathExtension
-        let ext = nsFilename.pathExtension
-        guard let path = Bundle.main.path(forResource: name, ofType: ext),
-              let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
-            return nil
-        }
-        return "data:\(mimeType(for: filename));base64,\(data.base64EncodedString())"
+        questionAssetProvider.imageDataURL(filename: filename)
     }
     
     // MARK: - AI Hint
     
     func getQuestionHint() {
-        showHintSheet()
+        showHintSheet(mode: .text, forceRefresh: false)
     }
 
-    func showHintSheet() {
-        guard let current = currentQuestion else { return }
-        showAIResponseSheet = true
-        aiResponseSheetTitle = "Hint"
+    func regenerateHint() {
+        showHintSheet(mode: activeHintMode, forceRefresh: true)
+    }
+
+    func showHintSheet(mode: HintMode = .text, forceRefresh: Bool = false) {
+        guard !isLoadingHint, let current = currentQuestion else { return }
+        let requestQuestionId = current.question.id
+        let provider = AIProviderType(rawValue: settingsManager.selectedProvider) ?? .openai
+        let modelId = provider.resolveModelId(settingsManager.selectedModel)
+        let requestedImageCount = settingsManager.hintImageCount
+        let effectiveImageCount = mode == .deep ? requestedImageCount : 0
+        let responseType = hintCacheResponseType(provider: provider, modelId: modelId, mode: mode, imageCount: effectiveImageCount)
+
+        activeHintMode = mode
+        aiResponseSheetTitle = mode.title
         aiResponseSheetBody = nil
-        isLoadingAIResponseSheet = true
-        logInteractionEvent(name: "quiz_hint_requested", questionId: current.question.id, metadata: hasSubmitted ? "context=result" : "context=question")
-        
-        // Check cache first
-        if let cached = try? databaseManager.fetchAIResponse(questionId: current.question.id, responseType: "hint") {
-            aiHint = cached.response
-            aiResponseSheetBody = cached.response
-            isLoadingAIResponseSheet = false
-            logInteractionEvent(name: "quiz_hint_cache_hit", questionId: current.question.id, metadata: nil)
-            return
+        isLoadingAIResponseSheet = false
+
+        logInteractionEvent(
+            name: "quiz_hint_requested",
+            questionId: requestQuestionId,
+            metadata: "mode=\(mode.rawValue);context=\(hasSubmitted ? "result" : "question");forceRefresh=\(forceRefresh);provider=\(provider.rawValue);imageCount=\(effectiveImageCount);requestedImageCount=\(requestedImageCount)"
+        )
+
+        if !forceRefresh {
+            if let cached = loadCachedHintPayload(
+                questionId: requestQuestionId,
+                responseType: responseType,
+                fallbackProvider: provider.rawValue,
+                fallbackModel: modelId
+            ) {
+                aiHintPayload = cached
+                aiHint = cached.text
+                aiResponseSheetBody = cached.text
+                aiResponseSheetTitle = mode.title
+                showAIResponseSheet = true
+                logInteractionEvent(name: "quiz_hint_cache_hit", questionId: requestQuestionId, metadata: "type=\(responseType)")
+                return
+            }
+
+            if mode == .text,
+               let legacy = loadCachedHintPayload(
+                questionId: requestQuestionId,
+                responseType: "hint",
+                fallbackProvider: provider.rawValue,
+                fallbackModel: modelId
+               ) {
+                aiHintPayload = legacy
+                aiHint = legacy.text
+                aiResponseSheetBody = legacy.text
+                aiResponseSheetTitle = mode.title
+                showAIResponseSheet = true
+                logInteractionEvent(name: "quiz_hint_cache_hit", questionId: requestQuestionId, metadata: "type=hint_legacy")
+                return
+            }
         }
-        
+
+        showAIResponseSheet = false
         isLoadingHint = true
+        isGeneratingVisualHint = mode == .deep && effectiveImageCount > 0
         Task { @MainActor in
+            defer {
+                isLoadingHint = false
+                isGeneratingVisualHint = false
+            }
             do {
-                let hintPrompt = settingsManager.renderPrompt(.hintRequest, values: [
+                let questionImageContext = current.questionAttachments.isEmpty
+                    ? "No question images attached."
+                    : "Question images: \(current.questionAttachments.map(\.filename).joined(separator: ", "))"
+
+                let hintPrompt = settingsManager.renderPrompt(mode.promptKey, values: [
                     "question": current.question.text,
                     "choiceA": current.shuffledAnswers[0],
                     "choiceB": current.shuffledAnswers[1],
                     "choiceC": current.shuffledAnswers[2],
                     "choiceD": current.shuffledAnswers[3],
-                    "correctAnswer": current.shuffledAnswers[current.correctAnswerIndex]
+                    "correctAnswer": current.shuffledAnswers[current.correctAnswerIndex],
+                    "questionImageContext": questionImageContext,
+                    "imageCount": "\(effectiveImageCount)"
                 ])
-                
-                let messages = [ChatMessage(role: .system, content: settingsManager.systemPrompt),
-                               ChatMessage(role: .user, content: hintPrompt)]
-                
-                let response = try await aiService.sendChat(messages: messages)
-                aiHint = response
-                aiResponseSheetBody = response
-                
-                // Cache the response
-                let cache = AIResponseCache(
-                    id: nil,
-                    questionId: current.question.id,
-                    responseType: "hint",
+
+                let questionImages = current.questionAttachments.compactMap { attachment in
+                    base64DataURL(for: attachment.filename).flatMap(parseDataURL)
+                }
+
+                let response = try await aiService.generateHint(
+                    systemPrompt: settingsManager.systemPrompt,
+                    prompt: hintPrompt,
+                    questionImages: questionImages,
+                    imageCount: effectiveImageCount
+                )
+
+                let payload = try persistHintPayload(
                     response: response,
+                    questionId: requestQuestionId,
+                    responseType: responseType,
+                    provider: provider,
+                    modelId: modelId,
+                    imageCount: effectiveImageCount
+                )
+
+                guard currentQuestion?.question.id == requestQuestionId else { return }
+                aiHintPayload = payload
+                aiHint = payload.text
+                aiResponseSheetBody = payload.text
+                aiResponseSheetTitle = mode.title
+                showAIResponseSheet = true
+                logInteractionEvent(
+                    name: "quiz_hint_generated",
+                    questionId: requestQuestionId,
+                    metadata: "mode=\(mode.rawValue);images=\(payload.images.count);provider=\(provider.rawValue);imageCount=\(effectiveImageCount)"
+                )
+            } catch {
+                guard currentQuestion?.question.id == requestQuestionId else { return }
+                let fallbackText = "Unable to generate hint. Please try again."
+                let payload = AIHintPayload(
+                    text: fallbackText,
+                    images: [],
+                    provider: provider.rawValue,
+                    model: modelId,
                     createdAt: Date()
                 )
-                try? databaseManager.saveAIResponse(cache)
-                logInteractionEvent(name: "quiz_hint_generated", questionId: current.question.id, metadata: nil)
-                
-                isLoadingHint = false
-                isLoadingAIResponseSheet = false
-            } catch {
-                aiHint = "Unable to generate hint. Please try again."
-                aiResponseSheetBody = "Unable to generate hint. Please try again."
-                logInteractionEvent(name: "quiz_hint_failed", questionId: current.question.id, metadata: nil)
-                isLoadingHint = false
-                isLoadingAIResponseSheet = false
+                aiHintPayload = payload
+                aiHint = fallbackText
+                aiResponseSheetBody = fallbackText
+                aiResponseSheetTitle = mode.title
+                showAIResponseSheet = true
+                logInteractionEvent(
+                    name: "quiz_hint_failed",
+                    questionId: requestQuestionId,
+                    metadata: "mode=\(mode.rawValue);provider=\(provider.rawValue)"
+                )
             }
         }
     }
@@ -556,6 +656,150 @@ final class QuizViewModel {
                 logInteractionEvent(name: "quiz_contextual_explain_failed", questionId: current.question.id, metadata: "selection=\(normalizedSelectedText.prefix(60))")
             }
         }
+    }
+
+    private func hintCacheResponseType(provider: AIProviderType, modelId: String, mode: HintMode, imageCount: Int) -> String {
+        "hint_v3_\(mode.rawValue)_\(provider.rawValue)_\(stableHash(modelId.lowercased()))_img\(max(0, min(3, imageCount)))"
+    }
+
+    private func loadCachedHintPayload(questionId: Int64, responseType: String, fallbackProvider: String, fallbackModel: String) -> AIHintPayload? {
+        guard let cached = try? databaseManager.fetchAIResponse(questionId: questionId, responseType: responseType) else {
+            return nil
+        }
+        return decodeHintPayload(from: cached.response, fallbackProvider: fallbackProvider, fallbackModel: fallbackModel)
+    }
+
+    private func decodeHintPayload(from response: String, fallbackProvider: String, fallbackModel: String) -> AIHintPayload? {
+        if let data = response.data(using: .utf8),
+           let payload = try? JSONDecoder().decode(AIHintPayload.self, from: data) {
+            return payloadWithExistingImages(payload)
+        }
+
+        let trimmed = response.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return AIHintPayload(
+            text: trimmed,
+            images: [],
+            provider: fallbackProvider,
+            model: fallbackModel,
+            createdAt: Date()
+        )
+    }
+
+    private func persistHintPayload(
+        response: AIHintResponse,
+        questionId: Int64,
+        responseType: String,
+        provider: AIProviderType,
+        modelId: String,
+        imageCount: Int
+    ) throws -> AIHintPayload {
+        if let existing = try? databaseManager.fetchAIResponse(questionId: questionId, responseType: responseType),
+           let decoded = decodeHintPayload(from: existing.response, fallbackProvider: provider.rawValue, fallbackModel: modelId) {
+            deleteHintImageFiles(from: decoded)
+        }
+
+        let imageLimit = max(0, min(3, imageCount))
+        let imageReferences = try response.images
+            .prefix(imageLimit)
+            .map { image in
+                let imageURL = try persistHintImageData(image.data, mimeType: image.mimeType, questionId: questionId)
+                return AIHintPayload.ImageReference(path: imageURL.path, mimeType: image.mimeType)
+            }
+
+        let trimmedText = response.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let payload = AIHintPayload(
+            text: trimmedText.isEmpty ? "Use the key concept in the stem and eliminate options that conflict with basic flight principles." : trimmedText,
+            images: imageReferences,
+            provider: provider.rawValue,
+            model: modelId,
+            createdAt: Date()
+        )
+
+        let encoded = try JSONEncoder().encode(payload)
+        guard let encodedString = String(data: encoded, encoding: .utf8) else {
+            throw AIServiceError.providerError("Unable to encode hint cache payload")
+        }
+
+        let cache = AIResponseCache(
+            id: nil,
+            questionId: questionId,
+            responseType: responseType,
+            response: encodedString,
+            createdAt: Date()
+        )
+        try databaseManager.saveAIResponse(cache)
+        return payloadWithExistingImages(payload)
+    }
+
+    private func payloadWithExistingImages(_ payload: AIHintPayload) -> AIHintPayload {
+        var filtered = payload
+        filtered.images = payload.images.filter { FileManager.default.fileExists(atPath: $0.path) }
+        return filtered
+    }
+
+    private func deleteHintImageFiles(from payload: AIHintPayload) {
+        let fileManager = FileManager.default
+        for image in payload.images where fileManager.fileExists(atPath: image.path) {
+            try? fileManager.removeItem(atPath: image.path)
+        }
+    }
+
+    private func persistHintImageData(_ data: Data, mimeType: String, questionId: Int64) throws -> URL {
+        let directory = try hintImageCacheDirectory()
+        let ext = fileExtension(for: mimeType)
+        let filename = "q\(questionId)_\(UUID().uuidString).\(ext)"
+        let url = directory.appendingPathComponent(filename, isDirectory: false)
+        try data.write(to: url, options: .atomic)
+        return url
+    }
+
+    private func hintImageCacheDirectory() throws -> URL {
+        let fileManager = FileManager.default
+        let appSupport = try fileManager.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let datasetId = settingsManager.activeDatasetId ?? "default"
+        let profileId = settingsManager.profileId(for: datasetId)
+        let directory = appSupport
+            .appendingPathComponent("PPLAITrainer", isDirectory: true)
+            .appendingPathComponent("AIHintCache", isDirectory: true)
+            .appendingPathComponent(datasetId, isDirectory: true)
+            .appendingPathComponent(profileId, isDirectory: true)
+
+        if !fileManager.fileExists(atPath: directory.path) {
+            try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        }
+        return directory
+    }
+
+    private func fileExtension(for mimeType: String) -> String {
+        switch mimeType.lowercased() {
+        case "image/jpeg": return "jpg"
+        case "image/webp": return "webp"
+        default: return "png"
+        }
+    }
+
+    private func parseDataURL(_ dataURL: String) -> AIInputImage? {
+        guard dataURL.hasPrefix("data:"),
+              let commaIndex = dataURL.firstIndex(of: ",") else {
+            return nil
+        }
+        let metadataStart = dataURL.index(dataURL.startIndex, offsetBy: 5)
+        let metadata = String(dataURL[metadataStart..<commaIndex])
+        let components = metadata.components(separatedBy: ";")
+        guard let mimeType = components.first,
+              metadata.contains("base64") else {
+            return nil
+        }
+        let payloadStart = dataURL.index(after: commaIndex)
+        let base64Payload = String(dataURL[payloadStart...])
+        guard !base64Payload.isEmpty else { return nil }
+        return AIInputImage(mimeType: mimeType, base64Data: base64Payload)
     }
     
     // MARK: - Visual Prompt Generation

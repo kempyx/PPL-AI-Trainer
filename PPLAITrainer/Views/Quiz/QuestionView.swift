@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct QuestionView: View {
+    @Environment(\.dependencies) private var deps
     let question: PresentedQuestion
     @Binding var selectedAnswer: Int?
     @Binding var selectedExplainText: String?
@@ -162,6 +163,10 @@ struct QuestionView: View {
     }
 
     private func loadBundleUIImage(filename: String) -> UIImage? {
+        if let image = deps?.questionAssetProvider.uiImage(filename: filename) {
+            return image
+        }
+
         let nsFilename = filename as NSString
         let name = nsFilename.deletingPathExtension
         let ext = nsFilename.pathExtension

@@ -1,5 +1,7 @@
 # Local automation/build artifacts
 .build/
 tmp/
+data/
+.DS_Store
 PreviewHost/
 PPLAITrainer.xcodeproj/xcshareddata/xcschemes/PreviewHost.xcscheme

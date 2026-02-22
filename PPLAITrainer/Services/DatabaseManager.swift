@@ -111,22 +111,69 @@ protocol DatabaseManaging {
 }
 
 final class DatabaseManager: DatabaseManaging {
-    private let dbQueue: DatabaseQueue
+    struct Configuration {
+        let dataset: DatasetDescriptor
+        let profileId: String
 
-    init() throws {
+        init(dataset: DatasetDescriptor, profileId: String) {
+            self.dataset = dataset
+            self.profileId = profileId
+        }
+
+        func localDatabaseURL(fileManager: FileManager = .default) throws -> URL {
+            let appSupport = try fileManager.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            )
+
+            let datasetsDir = appSupport
+                .appendingPathComponent("PPLAITrainer", isDirectory: true)
+                .appendingPathComponent("Datasets", isDirectory: true)
+                .appendingPathComponent(dataset.id, isDirectory: true)
+
+            if !fileManager.fileExists(atPath: datasetsDir.path) {
+                try fileManager.createDirectory(at: datasetsDir, withIntermediateDirectories: true)
+            }
+
+            return datasetsDir.appendingPathComponent("\(profileId).sqlite")
+        }
+    }
+
+    private let dbQueue: DatabaseQueue
+    private let configuration: Configuration
+
+    convenience init() throws {
+        let catalog = try BundledDatasetCatalog()
+        let settingsManager = SettingsManager()
+        let store = ActiveDatasetStore(settingsManager: settingsManager)
+        let datasetId = store.activeDatasetId(default: catalog.defaultDataset.id)
+        guard let dataset = catalog.dataset(id: datasetId) ?? Optional(catalog.defaultDataset) else {
+            throw NSError(domain: "DatabaseManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No dataset available"])
+        }
+        let profileId = store.activeProfileId(for: dataset.id)
+        try self.init(configuration: Configuration(dataset: dataset, profileId: profileId))
+    }
+
+    init(configuration: Configuration) throws {
+        self.configuration = configuration
         let fileManager = FileManager.default
-        let documentsPath = try fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        let dbPath = documentsPath.appendingPathComponent("153-en.sqlite")
+        let dbPath = try configuration.localDatabaseURL(fileManager: fileManager)
 
         if !fileManager.fileExists(atPath: dbPath.path) {
-            guard let bundlePath = Bundle.main.path(forResource: "153-en", ofType: "sqlite") else {
-                logger.error("Bundled database not found in app bundle")
-                throw NSError(domain: "DatabaseManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Bundled database not found"])
+            if try Self.migrateLegacyDatabaseIfNeeded(configuration: configuration, destinationURL: dbPath, fileManager: fileManager) {
+                logger.info("Legacy database migrated for dataset \(configuration.dataset.id, privacy: .public) profile \(configuration.profileId, privacy: .public) to \(dbPath.path, privacy: .public)")
+            } else {
+                guard let bundlePath = Self.resolveBundledDatabasePath(for: configuration.dataset, in: .main) else {
+                    logger.error("Bundled database not found in app bundle for dataset \(configuration.dataset.id, privacy: .public)")
+                    throw NSError(domain: "DatabaseManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Bundled database not found"])
+                }
+                try fileManager.copyItem(atPath: bundlePath, toPath: dbPath.path)
+                logger.info("Database copied for dataset \(configuration.dataset.id, privacy: .public) profile \(configuration.profileId, privacy: .public) to \(dbPath.path, privacy: .public)")
             }
-            try fileManager.copyItem(atPath: bundlePath, toPath: dbPath.path)
-            logger.info("Database copied to \(dbPath.path)")
         } else {
-            logger.info("Database already exists at \(dbPath.path)")
+            logger.info("Database already exists for dataset \(configuration.dataset.id, privacy: .public) profile \(configuration.profileId, privacy: .public) at \(dbPath.path, privacy: .public)")
         }
 
         dbQueue = try DatabaseQueue(path: dbPath.path)
@@ -134,7 +181,66 @@ final class DatabaseManager: DatabaseManaging {
         try preGenerateExplanationCache()
 
         let count = try dbQueue.read { db in try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM questions") ?? 0 }
-        logger.info("Database ready — \(count) questions loaded")
+        logger.info("Database ready for dataset \(configuration.dataset.id, privacy: .public) — \(count) questions loaded")
+    }
+
+    private static func resolveBundledDatabasePath(for dataset: DatasetDescriptor, in bundle: Bundle) -> String? {
+        if let path = bundle.path(forResource: dataset.databaseResourceName, ofType: dataset.databaseExtension) {
+            return path
+        }
+        if let path = bundle.path(forResource: dataset.databaseResourceName, ofType: dataset.databaseExtension, inDirectory: "Datasets") {
+            return path
+        }
+        return nil
+    }
+
+    private static func migrateLegacyDatabaseIfNeeded(
+        configuration: Configuration,
+        destinationURL: URL,
+        fileManager: FileManager
+    ) throws -> Bool {
+        guard let legacyURL = resolveLegacyDatabaseURL(for: configuration, fileManager: fileManager) else {
+            return false
+        }
+        guard fileManager.fileExists(atPath: legacyURL.path) else {
+            return false
+        }
+
+        do {
+            try fileManager.copyItem(at: legacyURL, to: destinationURL)
+            return true
+        } catch {
+            logger.error("Legacy database migration failed from \(legacyURL.path, privacy: .public) to \(destinationURL.path, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            throw NSError(
+                domain: "DatabaseManager",
+                code: 2,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "Unable to migrate existing study progress. Please retry and contact support if this persists."
+                ]
+            )
+        }
+    }
+
+    private static func resolveLegacyDatabaseURL(
+        for configuration: Configuration,
+        fileManager: FileManager
+    ) -> URL? {
+        guard configuration.dataset.databaseResourceName == "153-en",
+              configuration.dataset.databaseExtension == "sqlite",
+              configuration.profileId == configuration.dataset.id else {
+            return nil
+        }
+
+        guard let documents = try? fileManager.url(
+            for: .documentDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: false
+        ) else {
+            return nil
+        }
+
+        return documents.appendingPathComponent("153-en.sqlite")
     }
 
 

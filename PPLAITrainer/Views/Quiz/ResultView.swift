@@ -298,7 +298,14 @@ struct ResultView: View {
     private var aiTeaser: some View {
         NavigationLink {
             if let deps = dependencies {
-                SettingsView(viewModel: SettingsViewModel(keychainStore: deps.keychainStore, settingsManager: deps.settingsManager))
+                SettingsView(viewModel: SettingsViewModel(
+                    keychainStore: deps.keychainStore,
+                    settingsManager: deps.settingsManager,
+                    availableDatasets: deps.availableDatasets,
+                    activeDatasetId: deps.activeDataset.id,
+                    activeProfileId: deps.activeProfileId,
+                    switchDataset: deps.switchDataset
+                ))
             }
         } label: {
             HStack(spacing: 12) {
@@ -367,6 +374,10 @@ struct ResultView: View {
     }
     
     private func loadBundleUIImage(filename: String) -> UIImage? {
+        if let image = dependencies?.questionAssetProvider.uiImage(filename: filename) {
+            return image
+        }
+
         let nsFilename = filename as NSString
         let name = nsFilename.deletingPathExtension
         let ext = nsFilename.pathExtension

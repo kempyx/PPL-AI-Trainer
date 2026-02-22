@@ -40,13 +40,16 @@ final class StudyViewModel {
             let showPremiumContent = settingsManager.showPremiumContent
             let categories = try databaseManager.fetchAllTopLevelCategories()
                 .filter { showPremiumContent || !$0.isLocked }
-            logger.info("Fetched \(categories.count) top-level categories")
-            topLevelCategories = try categories.map { category in
+
+            let categoryStats = try categories.map { category in
                 let stats = try databaseManager.fetchAggregatedCategoryStats(parentId: category.id)
                 let srsStats = try databaseManager.fetchAggregatedSRSStats(parentId: category.id)
                 let subCount = try databaseManager.fetchSubcategoryCount(parentId: category.id)
                 return CategoryWithStats(category: category, stats: stats, srsStats: srsStats, subcategoryCount: subCount)
             }
+            topLevelCategories = categoryStats.filter { $0.stats.totalQuestions > 0 }
+            let hiddenEmptyCount = categoryStats.count - topLevelCategories.count
+            logger.info("Fetched \(categories.count) top-level categories, hid \(hiddenEmptyCount) with zero questions")
 
             // Build grouped display categories using category_groups table
             let groups = try databaseManager.fetchCategoryGroups()
@@ -129,12 +132,15 @@ final class StudyViewModel {
             let showPremiumContent = settingsManager.showPremiumContent
             let categories = try databaseManager.fetchSubcategories(parentId: parentId)
                 .filter { showPremiumContent || !$0.isLocked }
-            logger.info("Fetched \(categories.count) subcategories for parent \(parentId)")
-            subcategories = try categories.map { category in
+
+            let subcategoryStats = try categories.map { category in
                 let stats = try databaseManager.fetchCategoryStats(categoryId: category.id)
                 let srsStats = try databaseManager.fetchSRSStats(categoryId: category.id)
                 return CategoryWithStats(category: category, stats: stats, srsStats: srsStats)
             }
+            subcategories = subcategoryStats.filter { $0.stats.totalQuestions > 0 }
+            let hiddenEmptyCount = subcategoryStats.count - subcategories.count
+            logger.info("Fetched \(categories.count) subcategories for parent \(parentId), hid \(hiddenEmptyCount) with zero questions")
         } catch {
             logger.error("Failed to load subcategories for parent \(parentId): \(error)")
             subcategories = []

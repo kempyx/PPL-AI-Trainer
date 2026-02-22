@@ -54,7 +54,14 @@ struct AIConversationSheet: View {
                                         if case .noAPIKey = error {
                                             NavigationLink {
                                                 if let deps = dependencies {
-                                                    SettingsView(viewModel: SettingsViewModel(keychainStore: deps.keychainStore, settingsManager: deps.settingsManager))
+                                                    SettingsView(viewModel: SettingsViewModel(
+                                                        keychainStore: deps.keychainStore,
+                                                        settingsManager: deps.settingsManager,
+                                                        availableDatasets: deps.availableDatasets,
+                                                        activeDatasetId: deps.activeDataset.id,
+                                                        activeProfileId: deps.activeProfileId,
+                                                        switchDataset: deps.switchDataset
+                                                    ))
                                                 }
                                             } label: {
                                                 HStack {
