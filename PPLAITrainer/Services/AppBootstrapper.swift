@@ -25,6 +25,10 @@ final class AppBootstrapper {
     private let datasetCatalog: DatasetCatalogManaging
     private let activeDatasetStore: ActiveDatasetStoring
 
+    private static let legacyDatabaseFilename = "153-en.sqlite"
+    private static let legacyDatabaseResourceName = "153-en"
+    private static let legacyDatabaseExtension = "sqlite"
+
     var deps: Dependencies?
     var initError: String?
     var isLoading = false
@@ -102,10 +106,12 @@ final class AppBootstrapper {
         let previousDeps = self.deps
 
         do {
-            let activeDatasetId = activeDatasetStore.activeDatasetId(default: datasetCatalog.defaultDataset.id)
-            let dataset = datasetCatalog.dataset(id: activeDatasetId) ?? datasetCatalog.defaultDataset
+            let dataset = resolveBootstrapDataset()
             let profileId = activeDatasetStore.activeProfileId(for: dataset.id)
             self.deps = try buildDependencies(dataset: dataset, profileId: profileId)
+            if settingsManager.activeDatasetId == nil {
+                activeDatasetStore.setActiveDatasetId(dataset.id)
+            }
             self.initError = nil
 
             if resetRoot {
@@ -159,5 +165,37 @@ final class AppBootstrapper {
                 try await self.switchDataset(to: datasetId)
             }
         )
+    }
+
+    private func resolveBootstrapDataset() -> DatasetDescriptor {
+        if let storedId = settingsManager.activeDatasetId,
+           let storedDataset = datasetCatalog.dataset(id: storedId) {
+            return storedDataset
+        }
+
+        if settingsManager.activeDatasetId == nil,
+           hasLegacyDatabaseInDocuments(),
+           let legacyDataset = datasetCatalog.datasets.first(where: {
+               $0.databaseResourceName == Self.legacyDatabaseResourceName &&
+               $0.databaseExtension == Self.legacyDatabaseExtension
+           }) {
+            return legacyDataset
+        }
+
+        return datasetCatalog.defaultDataset
+    }
+
+    private func hasLegacyDatabaseInDocuments(fileManager: FileManager = .default) -> Bool {
+        guard let documents = try? fileManager.url(
+            for: .documentDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: false
+        ) else {
+            return false
+        }
+
+        let legacyPath = documents.appendingPathComponent(Self.legacyDatabaseFilename)
+        return fileManager.fileExists(atPath: legacyPath.path)
     }
 }
