@@ -607,6 +607,7 @@ final class QuizViewModel {
         guard !normalizedChoice.isEmpty else { return }
 
         selectedExplainText = normalizedChoice
+        aiHintPayload = nil
         showAIResponseSheet = true
         aiResponseSheetTitle = "Explain Choice"
         aiResponseSheetBody = nil
