@@ -13,7 +13,7 @@ final class SettingsViewModel {
     }
 
     private let keychainStore: KeychainStore
-    private let switchDatasetAction: (@Sendable (String) async throws -> Void)?
+    private let switchDatasetAction: (@MainActor (String) async throws -> Void)?
     private(set) var settingsManager: SettingsManager
     let availableDatasets: [DatasetDescriptor]
 
@@ -144,7 +144,7 @@ final class SettingsViewModel {
         availableDatasets: [DatasetDescriptor] = [],
         activeDatasetId: String? = nil,
         activeProfileId: String? = nil,
-        switchDataset: (@Sendable (String) async throws -> Void)? = nil
+        switchDataset: (@MainActor (String) async throws -> Void)? = nil
     ) {
         self.keychainStore = keychainStore
         self.settingsManager = settingsManager

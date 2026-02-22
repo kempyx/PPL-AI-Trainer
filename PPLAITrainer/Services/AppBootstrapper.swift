@@ -176,8 +176,7 @@ final class AppBootstrapper {
             activeProfileId: profileId,
             availableDatasets: datasets,
             questionAssetProvider: assetProvider,
-            switchDataset: { [weak self] datasetId in
-                guard let self else { return }
+            switchDataset: { [self] datasetId in
                 try await self.switchDataset(to: datasetId)
             }
         )

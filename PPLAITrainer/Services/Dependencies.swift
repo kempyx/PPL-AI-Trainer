@@ -16,7 +16,7 @@ struct Dependencies {
     let activeProfileId: String
     let availableDatasets: [DatasetDescriptor]
     let questionAssetProvider: QuestionAssetProviding
-    let switchDataset: @Sendable (String) async throws -> Void
+    let switchDataset: @MainActor (String) async throws -> Void
     
 
     var quizCoordinator: QuizCoordinator {
