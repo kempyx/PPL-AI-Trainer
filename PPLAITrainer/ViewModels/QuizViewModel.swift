@@ -533,18 +533,12 @@ final class QuizViewModel {
     }
     
     // MARK: - Visual Prompt Generation
-    
-    enum VisualPromptType {
-        case image
-        case video
-    }
-    
-    func generateVisualPrompt(type: VisualPromptType) -> String {
+
+    func generateVisualPrompt() -> String {
         guard let current = currentQuestion else { return "" }
-        
-        let mediaType = type == .image ? "image" : "video"
+
         return settingsManager.renderPrompt(.visualGeneration, values: [
-            "mediaType": mediaType,
+            "mediaType": "image",
             "question": current.question.text,
             "correctAnswer": current.shuffledAnswers[current.correctAnswerIndex],
             "officialExplanation": current.question.explanation ?? ""
