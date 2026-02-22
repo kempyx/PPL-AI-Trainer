@@ -18,6 +18,7 @@ final class GamificationService {
     var recentlyUnlockedAchievements: [AchievementDefinition] = []
     var didLevelUp: Bool = false
     var previousLevel: PilotLevel?
+    var reachedLevel: PilotLevel?
     private(set) var consecutiveCorrectInSession: Int = 0
     var currentStreak: Int { (try? databaseManager.fetchCurrentStreak()) ?? 0 }
     
@@ -70,6 +71,7 @@ final class GamificationService {
         if newLevel.minXP > prevLevel.minXP {
             didLevelUp = true
             previousLevel = prevLevel
+            reachedLevel = newLevel
         }
         
         return earned
@@ -149,7 +151,12 @@ final class GamificationService {
         sessionXP = 0
         consecutiveCorrectInSession = 0
         recentlyUnlockedAchievements = []
+        clearLevelUpFeedback()
+    }
+
+    func clearLevelUpFeedback() {
         didLevelUp = false
         previousLevel = nil
+        reachedLevel = nil
     }
 }

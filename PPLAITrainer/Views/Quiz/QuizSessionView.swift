@@ -150,8 +150,15 @@ struct QuizSessionView: View {
             }
         }
         .overlay {
-            if viewModel.gamificationService.didLevelUp {
-                ConfettiView()
+            if let levelUpFeedback {
+                ZStack {
+                    ConfettiView()
+                        .allowsHitTesting(false)
+
+                    LevelUpModal(fromLevel: levelUpFeedback.from, toLevel: levelUpFeedback.to) {
+                        viewModel.gamificationService.clearLevelUpFeedback()
+                    }
+                }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
@@ -388,6 +395,19 @@ struct QuizSessionView: View {
     private var isAIAvailable: Bool {
         dependencies?.isSelectedAIProviderConfigured == true
     }
+
+    private var levelUpFeedback: (from: PilotLevel, to: PilotLevel)? {
+        guard viewModel.gamificationService.recentlyUnlockedAchievements.isEmpty,
+              viewModel.gamificationService.didLevelUp,
+              let from = viewModel.gamificationService.previousLevel else {
+            return nil
+        }
+
+        let to = viewModel.gamificationService.reachedLevel
+            ?? PilotLevel.nextLevel(for: from.minXP)
+            ?? from
+        return (from, to)
+    }
 }
 
 #Preview {
@@ -423,6 +443,76 @@ private struct QuickAIResponseSheet: View {
             }
         }
         .padding()
+    }
+}
+
+private struct LevelUpModal: View {
+    let fromLevel: PilotLevel
+    let toLevel: PilotLevel
+    let onDismiss: () -> Void
+
+    @State private var scale: CGFloat = 0.88
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.38)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    onDismiss()
+                }
+
+            VStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.blue, .indigo],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 94, height: 94)
+
+                    Image(systemName: toLevel.icon)
+                        .font(.system(size: 44, weight: .bold))
+                        .foregroundColor(.white)
+                }
+
+                Text("Level Up!")
+                    .font(.title2.weight(.bold))
+
+                Text("\(fromLevel.title) -> \(toLevel.title)")
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+
+                Text("You reached \(toLevel.minXP)+ XP.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Button("Continue") {
+                    onDismiss()
+                }
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.blue, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .padding(24)
+            .frame(maxWidth: 320)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.white.opacity(0.22), lineWidth: 1)
+            )
+            .shadow(radius: 20)
+            .scaleEffect(scale)
+            .onAppear {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.72)) {
+                    scale = 1.0
+                }
+            }
+        }
     }
 }
 
