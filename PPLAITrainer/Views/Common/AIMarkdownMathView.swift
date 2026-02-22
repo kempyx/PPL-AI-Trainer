@@ -372,8 +372,9 @@ private enum AIMathMarkdownNormalizer {
 
             if repairedBody != body {
                 output.replaceSubrange(bodyStart..<closeRange.lowerBound, with: repairedBody)
-                let advancedOffset = repairedBody.distance(from: repairedBody.startIndex, to: repairedBody.endIndex)
-                searchStart = output.index(bodyStart, offsetBy: advancedOffset)
+                let repairedBodyLength = repairedBody.distance(from: repairedBody.startIndex, to: repairedBody.endIndex)
+                let closeDelimiterStart = output.index(bodyStart, offsetBy: repairedBodyLength)
+                searchStart = output.index(closeDelimiterStart, offsetBy: delimiter.count, limitedBy: output.endIndex) ?? output.endIndex
             } else {
                 searchStart = closeRange.upperBound
             }
