@@ -538,6 +538,7 @@ final class QuizViewModel {
         guard let current = currentQuestion else { return "" }
 
         return settingsManager.renderPrompt(.visualGeneration, values: [
+            "mediaType": "image",
             "question": current.question.text,
             "correctAnswer": current.shuffledAnswers[current.correctAnswerIndex],
             "officialExplanation": current.question.explanation ?? ""
