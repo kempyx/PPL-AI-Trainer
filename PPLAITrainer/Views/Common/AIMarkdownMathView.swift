@@ -387,18 +387,19 @@ private enum AIMathMarkdownNormalizer {
         result.reserveCapacity(body.count)
 
         var openBraceCount = 0
-        var isEscaped = false
+        var trailingBackslashCount = 0
 
         for character in body {
-            defer { isEscaped = false }
-
             if character == "\\" {
+                trailingBackslashCount += 1
                 result.append(character)
-                isEscaped = true
                 continue
             }
 
-            guard !isEscaped else {
+            let isEscaped = trailingBackslashCount % 2 == 1
+            trailingBackslashCount = 0
+
+            if isEscaped {
                 result.append(character)
                 continue
             }
