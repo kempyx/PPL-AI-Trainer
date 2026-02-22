@@ -131,6 +131,43 @@ struct ResultView: View {
                             .cornerRadius(8)
                     }
                 }
+
+                if isAIAvailable {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("AI Explanation Tools")
+                            .font(.headline)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 10) {
+                                ForEach([
+                                    QuizViewModel.AIRequestType.explain,
+                                    .simplify,
+                                    .analogy,
+                                    .commonMistakes
+                                ], id: \.rawValue) { type in
+                                    Button {
+                                        viewModel.requestInlineAI(type: type)
+                                    } label: {
+                                        Text(type.buttonLabel)
+                                    }
+                                    .buttonStyle(SecondaryButtonStyle())
+                                }
+                            }
+                        }
+
+                        if viewModel.isLoadingInlineAI {
+                            ProgressView("Generating response…")
+                                .font(.subheadline)
+                        }
+
+                        if let response = viewModel.aiInlineResponse, !response.isEmpty {
+                            AIMarkdownMathView(content: response)
+                                .padding()
+                                .background(Color.blue.opacity(0.08))
+                                .cornerRadius(8)
+                        }
+                    }
+                }
                 
                 if isAIAvailable {
                     VStack(alignment: .leading, spacing: 10) {
