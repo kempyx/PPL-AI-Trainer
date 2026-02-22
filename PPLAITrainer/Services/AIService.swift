@@ -79,7 +79,7 @@ final class AIService: AIServiceProtocol {
             throw AIServiceError.providerError("AI features are disabled")
         }
 
-        let clampedImageCount = max(1, min(3, imageCount))
+        let clampedImageCount = max(0, min(3, imageCount))
         let textFallbackMessages = [
             ChatMessage(role: .system, content: systemPrompt),
             ChatMessage(role: .user, content: prompt)
@@ -95,6 +95,21 @@ final class AIService: AIServiceProtocol {
 
         switch provider {
         case .gemini:
+            if clampedImageCount == 0 {
+                do {
+                    return try await makeGeminiTextOnlyHint(
+                        config: config,
+                        apiKey: apiKey,
+                        systemPrompt: systemPrompt,
+                        prompt: prompt,
+                        questionImages: questionImages
+                    )
+                } catch {
+                    logger.warning("Gemini text-only hint with images failed. Falling back to plain chat hint: \(error.localizedDescription, privacy: .public)")
+                    let text = try await makeGeminiChat(config: config, apiKey: apiKey, messages: textFallbackMessages)
+                    return AIHintResponse(text: text, images: [])
+                }
+            }
             do {
                 return try await makeGeminiHint(
                     config: config,
@@ -106,10 +121,35 @@ final class AIService: AIServiceProtocol {
                 )
             } catch {
                 logger.warning("Gemini multimodal hint failed. Falling back to text-only hint: \(error.localizedDescription, privacy: .public)")
-                let text = try await makeGeminiChat(config: config, apiKey: apiKey, messages: textFallbackMessages)
-                return AIHintResponse(text: text, images: [])
+                do {
+                    return try await makeGeminiTextOnlyHint(
+                        config: config,
+                        apiKey: apiKey,
+                        systemPrompt: systemPrompt,
+                        prompt: prompt,
+                        questionImages: questionImages
+                    )
+                } catch {
+                    let text = try await makeGeminiChat(config: config, apiKey: apiKey, messages: textFallbackMessages)
+                    return AIHintResponse(text: text, images: [])
+                }
             }
         case .openai:
+            if clampedImageCount == 0 {
+                do {
+                    return try await makeOpenAITextOnlyHint(
+                        model: config.modelName,
+                        apiKey: apiKey,
+                        systemPrompt: systemPrompt,
+                        prompt: prompt,
+                        questionImages: questionImages
+                    )
+                } catch {
+                    logger.warning("OpenAI text-only hint with images failed. Falling back to plain chat hint: \(error.localizedDescription, privacy: .public)")
+                    let text = try await makeOpenAIChat(config: config, apiKey: apiKey, messages: textFallbackMessages)
+                    return AIHintResponse(text: text, images: [])
+                }
+            }
             do {
                 return try await makeOpenAIHint(
                     model: config.modelName,
@@ -121,8 +161,18 @@ final class AIService: AIServiceProtocol {
                 )
             } catch {
                 logger.warning("OpenAI multimodal hint failed. Falling back to text-only hint: \(error.localizedDescription, privacy: .public)")
-                let text = try await makeOpenAIChat(config: config, apiKey: apiKey, messages: textFallbackMessages)
-                return AIHintResponse(text: text, images: [])
+                do {
+                    return try await makeOpenAITextOnlyHint(
+                        model: config.modelName,
+                        apiKey: apiKey,
+                        systemPrompt: systemPrompt,
+                        prompt: prompt,
+                        questionImages: questionImages
+                    )
+                } catch {
+                    let text = try await makeOpenAIChat(config: config, apiKey: apiKey, messages: textFallbackMessages)
+                    return AIHintResponse(text: text, images: [])
+                }
             }
         case .grok:
             let text = try await makeOpenAIChat(config: config, apiKey: apiKey, messages: textFallbackMessages)
@@ -207,7 +257,8 @@ final class AIService: AIServiceProtocol {
                 apiKey: apiKey,
                 systemPrompt: systemPrompt,
                 prompt: "\(prompt)\(variantSuffix)",
-                questionImages: questionImages
+                questionImages: questionImages,
+                enableImageGeneration: true
             )
             if responseText == nil, !result.text.isEmpty {
                 responseText = result.text
@@ -222,12 +273,33 @@ final class AIService: AIServiceProtocol {
         return AIHintResponse(text: (finalText?.isEmpty == false) ? (finalText ?? fallback) : fallback, images: generatedImages)
     }
 
-    private func openAIHintCall(
+    private func makeOpenAITextOnlyHint(
         model: String,
         apiKey: String,
         systemPrompt: String,
         prompt: String,
         questionImages: [AIInputImage]
+    ) async throws -> AIHintResponse {
+        let result = try await openAIHintCall(
+            model: model,
+            apiKey: apiKey,
+            systemPrompt: systemPrompt,
+            prompt: prompt,
+            questionImages: questionImages,
+            enableImageGeneration: false
+        )
+        let fallback = "Use the key concept in the stem and eliminate options that conflict with basic flight principles."
+        let finalText = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return AIHintResponse(text: finalText.isEmpty ? fallback : finalText, images: [])
+    }
+
+    private func openAIHintCall(
+        model: String,
+        apiKey: String,
+        systemPrompt: String,
+        prompt: String,
+        questionImages: [AIInputImage],
+        enableImageGeneration: Bool
     ) async throws -> AIHintResponse {
         var request = URLRequest(url: URL(string: "https://api.openai.com/v1/responses")!)
         request.httpMethod = "POST"
@@ -239,7 +311,7 @@ final class AIService: AIServiceProtocol {
             ["type": "input_image", "image_url": image.dataURL]
         })
 
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": model,
             "input": [
                 [
@@ -250,11 +322,11 @@ final class AIService: AIServiceProtocol {
                     "role": "user",
                     "content": userContent
                 ]
-            ],
-            "tools": [
-                ["type": "image_generation"]
             ]
         ]
+        if enableImageGeneration {
+            body["tools"] = [["type": "image_generation"]]
+        }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         logger.debug("POST /v1/responses (OpenAI multimodal hint) model=\(model)")
@@ -285,7 +357,7 @@ final class AIService: AIServiceProtocol {
         var images: [AIHintGeneratedImage] = []
         if let output = json["output"] as? [[String: Any]] {
             for item in output {
-                if let itemType = item["type"] as? String, itemType == "image_generation_call" {
+                if enableImageGeneration, let itemType = item["type"] as? String, itemType == "image_generation_call" {
                     if let result = item["result"] as? String,
                        let data = Data(base64Encoded: result) {
                         images.append(AIHintGeneratedImage(mimeType: "image/png", data: data))
@@ -414,7 +486,9 @@ final class AIService: AIServiceProtocol {
                 config: hintConfig,
                 apiKey: apiKey,
                 combinedPrompt: "\(systemPrompt)\n\n\(prompt)\(variantSuffix)",
-                questionImages: questionImages
+                questionImages: questionImages,
+                responseModalities: ["TEXT", "IMAGE"],
+                parseImages: true
             )
             if responseText == nil, !result.text.isEmpty {
                 responseText = result.text
@@ -429,11 +503,33 @@ final class AIService: AIServiceProtocol {
         return AIHintResponse(text: (finalText?.isEmpty == false) ? (finalText ?? fallback) : fallback, images: generatedImages)
     }
 
+    private func makeGeminiTextOnlyHint(
+        config: AIProviderConfig,
+        apiKey: String,
+        systemPrompt: String,
+        prompt: String,
+        questionImages: [AIInputImage]
+    ) async throws -> AIHintResponse {
+        let result = try await geminiHintCall(
+            config: config,
+            apiKey: apiKey,
+            combinedPrompt: "\(systemPrompt)\n\n\(prompt)",
+            questionImages: questionImages,
+            responseModalities: ["TEXT"],
+            parseImages: false
+        )
+        let fallback = "Use the key concept in the stem and eliminate options that conflict with basic flight principles."
+        let finalText = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return AIHintResponse(text: finalText.isEmpty ? fallback : finalText, images: [])
+    }
+
     private func geminiHintCall(
         config: AIProviderConfig,
         apiKey: String,
         combinedPrompt: String,
-        questionImages: [AIInputImage]
+        questionImages: [AIInputImage],
+        responseModalities: [String],
+        parseImages: Bool
     ) async throws -> AIHintResponse {
         let urlString = "\(config.baseURL)?key=\(apiKey)"
         var request = URLRequest(url: URL(string: urlString)!)
@@ -458,7 +554,7 @@ final class AIService: AIServiceProtocol {
                 ]
             ],
             "generationConfig": [
-                "responseModalities": ["TEXT", "IMAGE"]
+                "responseModalities": responseModalities
             ]
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -499,12 +595,14 @@ final class AIService: AIServiceProtocol {
                 textParts.append(text)
             }
 
-            let inlineAny = (part["inlineData"] as? [String: Any]) ?? (part["inline_data"] as? [String: Any])
-            if let inlineAny,
-               let encoded = inlineAny["data"] as? String,
-               let decoded = Data(base64Encoded: encoded) {
-                let mime = (inlineAny["mimeType"] as? String) ?? (inlineAny["mime_type"] as? String) ?? "image/png"
-                images.append(AIHintGeneratedImage(mimeType: mime, data: decoded))
+            if parseImages {
+                let inlineAny = (part["inlineData"] as? [String: Any]) ?? (part["inline_data"] as? [String: Any])
+                if let inlineAny,
+                   let encoded = inlineAny["data"] as? String,
+                   let decoded = Data(base64Encoded: encoded) {
+                    let mime = (inlineAny["mimeType"] as? String) ?? (inlineAny["mime_type"] as? String) ?? "image/png"
+                    images.append(AIHintGeneratedImage(mimeType: mime, data: decoded))
+                }
             }
         }
 
@@ -516,6 +614,6 @@ final class AIService: AIServiceProtocol {
         if normalized.contains("image") {
             return configuredModel
         }
-        return "gemini-2.5-flash-image"
+        return "gemini-3-pro-image-preview"
     }
 }

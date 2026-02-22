@@ -62,6 +62,7 @@ final class SettingsManager {
         case quickActionAnalogy
         case quickActionMistakes
         case hintRequest
+        case deepHintRequest
         case inlineExplain
         case inlineSimplify
         case inlineAnalogy
@@ -80,7 +81,27 @@ final class SettingsManager {
         .quickActionMistakes: "What do students commonly get wrong about this? What should I watch out for?",
         .hintRequest: """
         You are a flight instructor helping a student solve a PPL theory question.
-        Give a concise hint that guides the student toward the right reasoning without revealing the answer directly.
+        Give a concise text-only hint that guides the student toward the right reasoning without revealing the answer directly.
+
+        Question: {{question}}
+
+        Choices:
+        A. {{choiceA}}
+        B. {{choiceB}}
+        C. {{choiceC}}
+        D. {{choiceD}}
+
+        Correct answer text (never reveal directly): {{correctAnswer}}
+
+        Requirements:
+        - Text only, no images.
+        - Max 3 short sentences.
+        - Do not reference answer letters (A/B/C/D); refer only to concept wording.
+        - Do not state the correct answer text verbatim.
+        """,
+        .deepHintRequest: """
+        You are a flight instructor helping a student solve a PPL theory question.
+        Provide a deeper multimodal hint with concise text plus visual support.
 
         Question: {{question}}
 
@@ -92,12 +113,11 @@ final class SettingsManager {
 
         Correct answer text (never reveal directly): {{correctAnswer}}
         Question image context: {{questionImageContext}}
-        Visual hint requested: {{visualRequested}}
         Requested image count: {{imageCount}}
 
         Requirements:
-        - Text hint: max 3 short sentences.
-        - If visual hint requested is "yes", create up to {{imageCount}} simple educational diagram image(s) when the concept is visual/spatial.
+        - Text hint: max 4 short sentences, more detailed than a normal hint.
+        - Generate up to {{imageCount}} simple educational diagram image(s) that help reasoning.
         - Keep visuals schematic and instructional: clear labels, arrows, short callouts, high contrast, minimal clutter.
         - Do not reference answer letters (A/B/C/D); refer only to concept wording.
         - Do not state the correct answer text verbatim.

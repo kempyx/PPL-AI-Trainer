@@ -227,9 +227,9 @@ struct QuizSessionView: View {
 
     @ViewBuilder
     private var aiResponseSheetContent: some View {
-        if viewModel.aiResponseSheetTitle == "Hint",
-           let payload = viewModel.aiHintPayload {
+        if let payload = viewModel.aiHintPayload {
             HintResponseSheet(
+                title: viewModel.aiResponseSheetTitle,
                 payload: payload,
                 detentSelection: $hintSheetDetent
             ) {
@@ -259,26 +259,38 @@ struct QuizSessionView: View {
         VStack(spacing: 8) {
             if isAIAvailable,
                !viewModel.hasSubmitted {
-                HStack(spacing: 8) {
-                    Button {
-                        viewModel.showHintSheet()
-                    } label: {
-                        compactActionLabel("Hint", systemImage: "lightbulb", color: .orange)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(viewModel.isLoadingHint)
-                    .accessibilityLabel("Get hint")
-                    .accessibilityHint("Get guidance without revealing the answer")
-
-                    if let selected = viewModel.selectedExplainText, !selected.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
                         Button {
-                            viewModel.explainSelectedText()
+                            viewModel.showHintSheet(mode: .text)
                         } label: {
-                            compactActionLabel("Explain", systemImage: "text.quote", color: .blue)
+                            compactActionLabel("Hint", systemImage: "lightbulb", color: .orange)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Explain selected text")
-                        .accessibilityHint("Ask AI to explain the selected aviation term in context")
+                        .disabled(viewModel.isLoadingHint)
+                        .accessibilityLabel("Get hint")
+                        .accessibilityHint("Generate a concise text hint")
+
+                        Button {
+                            viewModel.showHintSheet(mode: .deep)
+                        } label: {
+                            compactActionLabel("Deep Hint", systemImage: "sparkles", color: .indigo)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(viewModel.isLoadingHint)
+                        .accessibilityLabel("Get deep hint")
+                        .accessibilityHint("Generate a deeper multimodal hint")
+
+                        if let selected = viewModel.selectedExplainText, !selected.isEmpty {
+                            Button {
+                                viewModel.explainSelectedText()
+                            } label: {
+                                compactActionLabel("Explain", systemImage: "text.quote", color: .blue)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Explain selected text")
+                            .accessibilityHint("Ask AI to explain the selected aviation term in context")
+                        }
                     }
                 }
                 .padding(.horizontal)
@@ -288,7 +300,7 @@ struct QuizSessionView: View {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Building hint and visual…")
+                    Text(viewModel.isGeneratingVisualHint ? "Building hint and visual…" : "Building hint…")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -410,6 +422,7 @@ private struct QuickAIResponseSheet: View {
 }
 
 private struct HintResponseSheet: View {
+    let title: String
     let payload: AIHintPayload
     @Binding var detentSelection: PresentationDetent
     let onRegenerate: () -> Void
@@ -417,7 +430,7 @@ private struct HintResponseSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
-                Label("Hint", systemImage: "lightbulb")
+                Label(title, systemImage: "lightbulb")
                     .font(.headline)
                 Spacer()
                 Button {

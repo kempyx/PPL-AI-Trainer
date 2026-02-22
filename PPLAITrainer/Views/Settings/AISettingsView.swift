@@ -101,7 +101,7 @@ struct AISettingsView: View {
 
                 Stepper(value: $viewModel.hintImageCount, in: 1...3) {
                     HStack {
-                        Text("Hint visual images")
+                        Text("Deep Hint images")
                         Spacer()
                         Text("\(viewModel.hintImageCount)")
                             .font(.subheadline.monospacedDigit())
@@ -109,7 +109,7 @@ struct AISettingsView: View {
                     }
                 }
 
-                Text("Controls how many generated images are requested per hint (when supported).")
+                Text("Controls how many generated images are requested for Deep Hint (when supported).")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

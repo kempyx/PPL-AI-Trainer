@@ -27,6 +27,8 @@ final class QuizViewModel {
     var aiHint: String? = nil
     var aiHintPayload: AIHintPayload? = nil
     var isLoadingHint: Bool = false
+    var isGeneratingVisualHint: Bool = false
+    var activeHintMode: HintMode = .text
     var aiInlineResponse: String? = nil
     var isLoadingInlineAI: Bool = false
     var selectedExplainText: String? = nil
@@ -60,6 +62,25 @@ final class QuizViewModel {
             case .simplify: return "Simplify"
             case .analogy: return "Analogy"
             case .commonMistakes: return "Mistakes"
+            }
+        }
+    }
+
+    enum HintMode: String {
+        case text
+        case deep
+
+        var title: String {
+            switch self {
+            case .text: return "Hint"
+            case .deep: return "Deep Hint"
+            }
+        }
+
+        var promptKey: SettingsManager.AIPromptKey {
+            switch self {
+            case .text: return .hintRequest
+            case .deep: return .deepHintRequest
             }
         }
     }
@@ -250,6 +271,8 @@ final class QuizViewModel {
         aiHint = nil
         aiHintPayload = nil
         isLoadingHint = false
+        isGeneratingVisualHint = false
+        activeHintMode = .text
         aiInlineResponse = nil
         isLoadingInlineAI = false
         showCorrectFlash = false
@@ -275,6 +298,8 @@ final class QuizViewModel {
         aiHint = nil
         aiHintPayload = nil
         isLoadingHint = false
+        isGeneratingVisualHint = false
+        activeHintMode = .text
         aiInlineResponse = nil
         isLoadingInlineAI = false
         showCorrectFlash = false
@@ -346,29 +371,31 @@ final class QuizViewModel {
     // MARK: - AI Hint
     
     func getQuestionHint() {
-        showHintSheet(forceRefresh: false)
+        showHintSheet(mode: .text, forceRefresh: false)
     }
 
     func regenerateHint() {
-        showHintSheet(forceRefresh: true)
+        showHintSheet(mode: activeHintMode, forceRefresh: true)
     }
 
-    func showHintSheet(forceRefresh: Bool = false) {
+    func showHintSheet(mode: HintMode = .text, forceRefresh: Bool = false) {
         guard !isLoadingHint, let current = currentQuestion else { return }
         let requestQuestionId = current.question.id
         let provider = AIProviderType(rawValue: settingsManager.selectedProvider) ?? .openai
         let modelId = provider.resolveModelId(settingsManager.selectedModel)
         let requestedImageCount = settingsManager.hintImageCount
-        let responseType = hintCacheResponseType(provider: provider, modelId: modelId, imageCount: requestedImageCount)
+        let effectiveImageCount = mode == .deep ? requestedImageCount : 0
+        let responseType = hintCacheResponseType(provider: provider, modelId: modelId, mode: mode, imageCount: effectiveImageCount)
 
-        aiResponseSheetTitle = "Hint"
+        activeHintMode = mode
+        aiResponseSheetTitle = mode.title
         aiResponseSheetBody = nil
         isLoadingAIResponseSheet = false
 
         logInteractionEvent(
             name: "quiz_hint_requested",
             questionId: requestQuestionId,
-            metadata: "context=\(hasSubmitted ? "result" : "question");forceRefresh=\(forceRefresh);provider=\(provider.rawValue);imageCount=\(requestedImageCount)"
+            metadata: "mode=\(mode.rawValue);context=\(hasSubmitted ? "result" : "question");forceRefresh=\(forceRefresh);provider=\(provider.rawValue);imageCount=\(effectiveImageCount);requestedImageCount=\(requestedImageCount)"
         )
 
         if !forceRefresh {
@@ -381,20 +408,23 @@ final class QuizViewModel {
                 aiHintPayload = cached
                 aiHint = cached.text
                 aiResponseSheetBody = cached.text
+                aiResponseSheetTitle = mode.title
                 showAIResponseSheet = true
                 logInteractionEvent(name: "quiz_hint_cache_hit", questionId: requestQuestionId, metadata: "type=\(responseType)")
                 return
             }
 
-            if let legacy = loadCachedHintPayload(
+            if mode == .text,
+               let legacy = loadCachedHintPayload(
                 questionId: requestQuestionId,
                 responseType: "hint",
                 fallbackProvider: provider.rawValue,
                 fallbackModel: modelId
-            ) {
+               ) {
                 aiHintPayload = legacy
                 aiHint = legacy.text
                 aiResponseSheetBody = legacy.text
+                aiResponseSheetTitle = mode.title
                 showAIResponseSheet = true
                 logInteractionEvent(name: "quiz_hint_cache_hit", questionId: requestQuestionId, metadata: "type=hint_legacy")
                 return
@@ -403,15 +433,18 @@ final class QuizViewModel {
 
         showAIResponseSheet = false
         isLoadingHint = true
+        isGeneratingVisualHint = mode == .deep && effectiveImageCount > 0
         Task { @MainActor in
-            defer { isLoadingHint = false }
+            defer {
+                isLoadingHint = false
+                isGeneratingVisualHint = false
+            }
             do {
                 let questionImageContext = current.questionAttachments.isEmpty
                     ? "No question images attached."
                     : "Question images: \(current.questionAttachments.map(\.filename).joined(separator: ", "))"
-                let visualRequested = (provider == .gemini || provider == .openai) ? "yes" : "no"
 
-                let hintPrompt = settingsManager.renderPrompt(.hintRequest, values: [
+                let hintPrompt = settingsManager.renderPrompt(mode.promptKey, values: [
                     "question": current.question.text,
                     "choiceA": current.shuffledAnswers[0],
                     "choiceB": current.shuffledAnswers[1],
@@ -419,8 +452,7 @@ final class QuizViewModel {
                     "choiceD": current.shuffledAnswers[3],
                     "correctAnswer": current.shuffledAnswers[current.correctAnswerIndex],
                     "questionImageContext": questionImageContext,
-                    "visualRequested": visualRequested,
-                    "imageCount": "\(requestedImageCount)"
+                    "imageCount": "\(effectiveImageCount)"
                 ])
 
                 let questionImages = current.questionAttachments.compactMap { attachment in
@@ -431,7 +463,7 @@ final class QuizViewModel {
                     systemPrompt: settingsManager.systemPrompt,
                     prompt: hintPrompt,
                     questionImages: questionImages,
-                    imageCount: requestedImageCount
+                    imageCount: effectiveImageCount
                 )
 
                 let payload = try persistHintPayload(
@@ -439,18 +471,20 @@ final class QuizViewModel {
                     questionId: requestQuestionId,
                     responseType: responseType,
                     provider: provider,
-                    modelId: modelId
+                    modelId: modelId,
+                    imageCount: effectiveImageCount
                 )
 
                 guard currentQuestion?.question.id == requestQuestionId else { return }
                 aiHintPayload = payload
                 aiHint = payload.text
                 aiResponseSheetBody = payload.text
+                aiResponseSheetTitle = mode.title
                 showAIResponseSheet = true
                 logInteractionEvent(
                     name: "quiz_hint_generated",
                     questionId: requestQuestionId,
-                    metadata: "images=\(payload.images.count);provider=\(provider.rawValue)"
+                    metadata: "mode=\(mode.rawValue);images=\(payload.images.count);provider=\(provider.rawValue);imageCount=\(effectiveImageCount)"
                 )
             } catch {
                 guard currentQuestion?.question.id == requestQuestionId else { return }
@@ -465,11 +499,12 @@ final class QuizViewModel {
                 aiHintPayload = payload
                 aiHint = fallbackText
                 aiResponseSheetBody = fallbackText
+                aiResponseSheetTitle = mode.title
                 showAIResponseSheet = true
                 logInteractionEvent(
                     name: "quiz_hint_failed",
                     questionId: requestQuestionId,
-                    metadata: "provider=\(provider.rawValue)"
+                    metadata: "mode=\(mode.rawValue);provider=\(provider.rawValue)"
                 )
             }
         }
@@ -623,8 +658,8 @@ final class QuizViewModel {
         }
     }
 
-    private func hintCacheResponseType(provider: AIProviderType, modelId: String, imageCount: Int) -> String {
-        "hint_v2_\(provider.rawValue)_\(stableHash(modelId.lowercased()))_img\(max(1, min(3, imageCount)))"
+    private func hintCacheResponseType(provider: AIProviderType, modelId: String, mode: HintMode, imageCount: Int) -> String {
+        "hint_v3_\(mode.rawValue)_\(provider.rawValue)_\(stableHash(modelId.lowercased()))_img\(max(0, min(3, imageCount)))"
     }
 
     private func loadCachedHintPayload(questionId: Int64, responseType: String, fallbackProvider: String, fallbackModel: String) -> AIHintPayload? {
@@ -656,14 +691,15 @@ final class QuizViewModel {
         questionId: Int64,
         responseType: String,
         provider: AIProviderType,
-        modelId: String
+        modelId: String,
+        imageCount: Int
     ) throws -> AIHintPayload {
         if let existing = try? databaseManager.fetchAIResponse(questionId: questionId, responseType: responseType),
            let decoded = decodeHintPayload(from: existing.response, fallbackProvider: provider.rawValue, fallbackModel: modelId) {
             deleteHintImageFiles(from: decoded)
         }
 
-        let imageLimit = max(1, min(3, settingsManager.hintImageCount))
+        let imageLimit = max(0, min(3, imageCount))
         let imageReferences = try response.images
             .prefix(imageLimit)
             .map { image in
