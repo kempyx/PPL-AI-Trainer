@@ -89,6 +89,7 @@ protocol DatabaseManaging {
     // AI response caching
     func saveAIResponse(_ cache: AIResponseCache) throws
     func fetchAIResponse(questionId: Int64, responseType: String) throws -> AIResponseCache?
+    func clearAIResponseCache(responseTypes: [String]) throws
     
     // Search
     func searchQuestions(query: String, limit: Int) throws -> [Question]
@@ -971,6 +972,17 @@ final class DatabaseManager: DatabaseManaging {
             try AIResponseCache
                 .filter(Column("questionId") == questionId && Column("responseType") == responseType)
                 .fetchOne(db)
+        }
+    }
+
+    func clearAIResponseCache(responseTypes: [String]) throws {
+        guard !responseTypes.isEmpty else { return }
+        let placeholders = Array(repeating: "?", count: responseTypes.count).joined(separator: ",")
+        try dbQueue.write { db in
+            try db.execute(
+                sql: "DELETE FROM ai_response_cache WHERE responseType IN (\(placeholders))",
+                arguments: StatementArguments(responseTypes)
+            )
         }
     }
 }

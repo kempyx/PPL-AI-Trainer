@@ -2,6 +2,21 @@ import SwiftUI
 
 @main
 struct PPLAITrainerApp: App {
+    private static let inlineAICacheCleanupKey = "inlineAICacheCleanupV3"
+    private static let staleInlineCacheResponseTypes = [
+        "explain",
+        "simplify",
+        "analogy",
+        "mistakes",
+        "inline_v2_explain",
+        "inline_v2_simplify",
+        "inline_v2_analogy",
+        "inline_v2_mistakes",
+        "inline_v3_simplify",
+        "inline_v3_analogy",
+        "inline_v3_mistakes"
+    ]
+
     let deps: Dependencies?
     let initError: String?
 
@@ -11,6 +26,11 @@ struct PPLAITrainerApp: App {
             let keychainStore = KeychainStore()
             let settingsManager = SettingsManager()
             let networkMonitor = NetworkMonitor()
+
+            if !UserDefaults.standard.bool(forKey: Self.inlineAICacheCleanupKey) {
+                try? databaseManager.clearAIResponseCache(responseTypes: Self.staleInlineCacheResponseTypes)
+                UserDefaults.standard.set(true, forKey: Self.inlineAICacheCleanupKey)
+            }
             
             let gamificationService = GamificationService(databaseManager: databaseManager, settingsManager: settingsManager)
             let hapticService = HapticService(settingsManager: settingsManager)

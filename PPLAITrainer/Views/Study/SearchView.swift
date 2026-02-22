@@ -206,7 +206,11 @@ struct StandaloneAISheet: View {
                             }
                             
                             if isLoading {
-                                ProgressView().padding()
+                                LoadingAnimationView(
+                                    requestCount: messages.count,
+                                    title: "Thinking it through"
+                                )
+                                .padding(.horizontal, 12)
                             }
                             
                             Color.clear.frame(height: 1).id("bottom")

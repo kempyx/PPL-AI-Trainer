@@ -133,6 +133,9 @@ struct StudyView: View {
                 viewModel.loadTopLevelCategories()
                 loadSavedSession()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .settingsDidChange)) { _ in
+                viewModel.loadTopLevelCategories()
+            }
             .alert("Discard saved session?", isPresented: $showResumeConfirmation) {
                 Button("Cancel", role: .cancel) {}
                 Button("Discard", role: .destructive) {

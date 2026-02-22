@@ -413,34 +413,58 @@ final class QuizViewModel {
     func requestInlineAI(type: AIRequestType) {
         guard let current = currentQuestion else { return }
         logInteractionEvent(name: "quiz_inline_ai_requested", questionId: current.question.id, metadata: "type=\(type.rawValue)")
+        let responseType = inlineAIResponseType(for: type)
         
         // Check cache first
-        if let cached = try? databaseManager.fetchAIResponse(questionId: current.question.id, responseType: type.rawValue) {
-            aiInlineResponse = cached.response
-            // Add to conversation history
-            aiConversation?.chatMessages.append(ChatMessage(role: .user, content: type.prompt(using: settingsManager)))
-            aiConversation?.chatMessages.append(ChatMessage(role: .assistant, content: cached.response))
-            return
+        if let responseType,
+           let cached = try? databaseManager.fetchAIResponse(questionId: current.question.id, responseType: responseType) {
+                aiInlineResponse = cached.response
+                // Add to conversation history
+                aiConversation?.chatMessages.append(ChatMessage(role: .user, content: type.prompt(using: settingsManager)))
+                aiConversation?.chatMessages.append(ChatMessage(role: .assistant, content: cached.response))
+                return
         }
         
         isLoadingInlineAI = true
         Task { @MainActor in
             do {
+                let selectedAnswerText: String
+                let studentAnswerStatus: String
+                if let selectedAnswer, current.shuffledAnswers.indices.contains(selectedAnswer) {
+                    selectedAnswerText = current.shuffledAnswers[selectedAnswer]
+                    studentAnswerStatus = selectedAnswer == current.correctAnswerIndex ? "correct" : "incorrect"
+                } else {
+                    selectedAnswerText = "No student answer submitted."
+                    studentAnswerStatus = "unanswered"
+                }
+
+                let choices = current.shuffledAnswers.map { "- \($0)" }.joined(separator: "\n")
                 let context = """
                 Question: \(current.question.text)
                 
-                Choices:
-                A. \(current.shuffledAnswers[0])
-                B. \(current.shuffledAnswers[1])
-                C. \(current.shuffledAnswers[2])
-                D. \(current.shuffledAnswers[3])
+                Choices (order may vary each session):
+                \(choices)
                 
-                Correct answer: \(current.shuffledAnswers[current.correctAnswerIndex])
+                Correct answer text (use this exact wording): \(current.shuffledAnswers[current.correctAnswerIndex])
+                Student selected answer text: \(selectedAnswerText)
+                Student answer status: \(studentAnswerStatus)
                 
+                Official explanation:
                 \(current.question.explanation ?? "")
                 """
                 
-                let prompt = type.prompt(using: settingsManager).replacingOccurrences(of: "{{context}}", with: context)
+                let basePrompt = type.prompt(using: settingsManager).replacingOccurrences(of: "{{context}}", with: context)
+                let explainOnlyGuidance: String = type == .explain
+                    ? "- For Explain, explicitly compare the student's selected answer to the correct answer and explain why one is right and the other is wrong when applicable.\n"
+                    : ""
+                let prompt = """
+                \(basePrompt)
+
+                Important constraints:
+                - Do not reference option letters (A/B/C/D) or option position.
+                - Refer to the correct answer by answer text only.
+                \(explainOnlyGuidance)
+                """
                 let messages = [ChatMessage(role: .system, content: settingsManager.systemPrompt),
                                ChatMessage(role: .user, content: prompt)]
                 
@@ -451,15 +475,17 @@ final class QuizViewModel {
                 aiConversation?.chatMessages.append(ChatMessage(role: .user, content: type.prompt(using: settingsManager)))
                 aiConversation?.chatMessages.append(ChatMessage(role: .assistant, content: response))
                 
-                // Cache the response
-                let cache = AIResponseCache(
-                    id: nil,
-                    questionId: current.question.id,
-                    responseType: type.rawValue,
-                    response: response,
-                    createdAt: Date()
-                )
-                try? databaseManager.saveAIResponse(cache)
+                // Cache non-explain responses only.
+                if let responseType {
+                    let cache = AIResponseCache(
+                        id: nil,
+                        questionId: current.question.id,
+                        responseType: responseType,
+                        response: response,
+                        createdAt: Date()
+                    )
+                    try? databaseManager.saveAIResponse(cache)
+                }
                 logInteractionEvent(name: "quiz_inline_ai_generated", questionId: current.question.id, metadata: "type=\(type.rawValue)")
                 
                 isLoadingInlineAI = false
@@ -586,6 +612,15 @@ final class QuizViewModel {
     
     private func contextualExplainCacheKey(for selectedText: String) -> String {
         "context_explain_\(stableHash(selectedText.lowercased()))"
+    }
+
+    private func inlineAIResponseType(for type: AIRequestType) -> String? {
+        switch type {
+        case .explain:
+            return nil
+        case .simplify, .analogy, .commonMistakes:
+            return "inline_v3_\(type.rawValue)"
+        }
     }
     
     private func stableHash(_ input: String) -> UInt64 {

@@ -7,6 +7,7 @@ private let logger = Logger(subsystem: "com.primendro.PPLAITrainer", category: "
 @Observable
 final class StudyViewModel {
     private let databaseManager: DatabaseManaging
+    private let settingsManager: SettingsManager
     
     var topLevelCategories: [CategoryWithStats] = []
     var displayCategories: [DisplayCategory] = []
@@ -14,8 +15,9 @@ final class StudyViewModel {
     var dueCardCount: Int = 0
     var hasWrongAnswers: Bool = false
     
-    init(databaseManager: DatabaseManaging) {
+    init(databaseManager: DatabaseManaging, settingsManager: SettingsManager = SettingsManager()) {
         self.databaseManager = databaseManager
+        self.settingsManager = settingsManager
     }
     
     func loadTopLevelCategories() {
@@ -35,7 +37,9 @@ final class StudyViewModel {
     @MainActor
     private func loadCategories() async {
         do {
+            let showPremiumContent = settingsManager.showPremiumContent
             let categories = try databaseManager.fetchAllTopLevelCategories()
+                .filter { showPremiumContent || !$0.isLocked }
             logger.info("Fetched \(categories.count) top-level categories")
             topLevelCategories = try categories.map { category in
                 let stats = try databaseManager.fetchAggregatedCategoryStats(parentId: category.id)
@@ -122,7 +126,9 @@ final class StudyViewModel {
     @MainActor
     private func loadSubcategoriesForParent(parentId: Int64) async {
         do {
+            let showPremiumContent = settingsManager.showPremiumContent
             let categories = try databaseManager.fetchSubcategories(parentId: parentId)
+                .filter { showPremiumContent || !$0.isLocked }
             logger.info("Fetched \(categories.count) subcategories for parent \(parentId)")
             subcategories = try categories.map { category in
                 let stats = try databaseManager.fetchCategoryStats(categoryId: category.id)

@@ -18,7 +18,7 @@ struct ContentView: View {
         mockVM.gamificationService = deps.gamificationService
         
         self._dashboardViewModel = State(initialValue: DashboardViewModel(databaseManager: deps.databaseManager, settingsManager: deps.settingsManager))
-        self._studyViewModel = State(initialValue: StudyViewModel(databaseManager: deps.databaseManager))
+        self._studyViewModel = State(initialValue: StudyViewModel(databaseManager: deps.databaseManager, settingsManager: deps.settingsManager))
         self._mockExamViewModel = State(initialValue: mockVM)
         self._settingsViewModel = State(initialValue: SettingsViewModel(keychainStore: deps.keychainStore, settingsManager: deps.settingsManager))
     }

@@ -7,6 +7,7 @@ final class SettingsManager {
         static let selectedProvider = "selectedProvider"
         static let aiEnabled = "aiEnabled"
         static let confirmBeforeSending = "confirmBeforeSending"
+        static let showPremiumContent = "showPremiumContent"
         static let appearanceMode = "appearanceMode"
         static let systemPrompt = "systemPrompt"
         static let aiPromptOverrides = "aiPromptOverrides"
@@ -102,24 +103,7 @@ final class SettingsManager {
         {{officialExplanation}}
         """,
         .visualGeneration: """
-        You are creating a copy-paste-ready prompt for another LLM to generate a teaching image for a student pilot.
-
-        Write a single final prompt that asks for:
-        - a simple educational diagram (not photorealistic art)
-        - clear labels, arrows, and short callouts
-        - the concept in the question
-        - the correct answer made explicit in the visual
-        - the official explanation represented visually
-        - any essential domain knowledge the image model should include to make the concept accurate
-
-        Keep the generated image style focused on clarity and learning: schematic, instructional, high-contrast, minimal clutter.
-
-        Include these source details inside the produced prompt:
-        Question: {{question}}
-        Correct Answer: {{correctAnswer}}
-        Official Explanation: {{officialExplanation}}
-
-        Output only the final prompt text.
+        Create a clear, high-contrast, non-photorealistic instructional aviation diagram for student pilots that teaches this concept: {{question}}. Use a clean schematic layout with minimal clutter, clear labels, directional arrows, and short callouts; make the correct answer explicit in the visual: {{correctAnswer}}; represent this official explanation visually: {{officialExplanation}}; and include essential aviation domain knowledge needed for technical accuracy and exam understanding.
         """
     ]
     
@@ -140,6 +124,14 @@ final class SettingsManager {
     var confirmBeforeSending: Bool {
         get { defaults.bool(forKey: Keys.confirmBeforeSending) }
         set { defaults.set(newValue, forKey: Keys.confirmBeforeSending) }
+    }
+
+    var showPremiumContent: Bool {
+        get { defaults.bool(forKey: Keys.showPremiumContent) }
+        set {
+            defaults.set(newValue, forKey: Keys.showPremiumContent)
+            notifyChange()
+        }
     }
     
     var appearanceMode: String {

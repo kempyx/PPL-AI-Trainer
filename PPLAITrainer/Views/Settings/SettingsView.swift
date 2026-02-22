@@ -314,6 +314,8 @@ struct SettingsView: View {
                     get: { viewModel.settingsManager.streakReminderEnabled },
                     set: { viewModel.settingsManager.streakReminderEnabled = $0 }
                 ))
+
+                Toggle("Show Premium Content", isOn: $viewModel.showPremiumContent)
             }
             .animation(.default, value: viewModel.settingsManager.notificationsEnabled)
         }

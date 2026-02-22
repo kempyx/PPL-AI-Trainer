@@ -133,31 +133,66 @@ struct ResultView: View {
                 }
 
                 if isAIAvailable {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("AI Explanation Tools")
-                            .font(.headline)
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "sparkles.rectangle.stack.fill")
+                                .font(.title3)
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.cyan, .blue],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
 
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 10) {
-                                ForEach([
-                                    QuizViewModel.AIRequestType.explain,
-                                    .simplify,
-                                    .analogy,
-                                    .commonMistakes
-                                ], id: \.rawValue) { type in
-                                    Button {
-                                        viewModel.requestInlineAI(type: type)
-                                    } label: {
-                                        Text(type.buttonLabel)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("AI Co-Pilot")
+                                    .font(.headline)
+                                Text("Pick a mode and get the explanation in the style you want.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        let aiColumns = [
+                            GridItem(.flexible(minimum: 120), spacing: 10),
+                            GridItem(.flexible(minimum: 120), spacing: 10)
+                        ]
+
+                        LazyVGrid(columns: aiColumns, spacing: 10) {
+                            ForEach([
+                                QuizViewModel.AIRequestType.explain,
+                                .simplify,
+                                .analogy,
+                                .commonMistakes
+                            ], id: \.rawValue) { type in
+                                let tool = aiToolPresentation(for: type)
+                                Button {
+                                    viewModel.requestInlineAI(type: type)
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: tool.icon)
+                                            .font(.caption.weight(.bold))
+                                        Text(tool.title)
+                                            .font(.caption.weight(.semibold))
+                                            .lineLimit(1)
                                     }
-                                    .buttonStyle(SecondaryButtonStyle())
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
                                 }
+                                .buttonStyle(AIActionChipStyle(colors: tool.colors))
+                                .accessibilityLabel(type.buttonLabel)
+                                .accessibilityHint("Generate an AI explanation")
                             }
                         }
 
                         if viewModel.isLoadingInlineAI {
-                            ProgressView("Generating response…")
-                                .font(.subheadline)
+                            LoadingAnimationView(
+                                requestCount: 0,
+                                title: "Crafting your explanation",
+                                presentation: .panel
+                            )
                         }
 
                         if let response = viewModel.aiInlineResponse, !response.isEmpty {
@@ -167,20 +202,36 @@ struct ResultView: View {
                                 .cornerRadius(8)
                         }
                     }
+                    .padding(14)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.cyan.opacity(0.11), Color.blue.opacity(0.07)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: AppCornerRadius.medium)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppCornerRadius.medium)
+                            .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                    )
                 }
-                
+
                 if isAIAvailable {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Visual Prompt Generator")
+                        Text("Visual Study Prompt")
                             .font(.headline)
 
                         Button {
                             visualPromptText = viewModel.generateVisualPrompt()
                             showVisualPromptSheet = true
                         } label: {
-                            Label("Generate Visual Prompt", systemImage: "photo")
+                            Label("Create Image Prompt", systemImage: "photo.on.rectangle.angled")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 9)
                         }
-                        .buttonStyle(SecondaryButtonStyle())
+                        .buttonStyle(AIActionChipStyle(colors: [.blue, .indigo]))
                     }
                 }
 
@@ -282,6 +333,19 @@ struct ResultView: View {
         .buttonStyle(.plain)
     }
 
+    private func aiToolPresentation(for type: QuizViewModel.AIRequestType) -> (title: String, icon: String, colors: [Color]) {
+        switch type {
+        case .explain:
+            return ("Explain", "lightbulb.fill", [.orange, .yellow])
+        case .simplify:
+            return ("Simplify", "textformat.abc", [.mint, .green])
+        case .analogy:
+            return ("Analogy", "point.3.connected.trianglepath.dotted", [.teal, .blue])
+        case .commonMistakes:
+            return ("Mistakes", "exclamationmark.triangle.fill", [.orange, .red])
+        }
+    }
+
     private func explanationSections(from explanation: String) -> [String] {
         let trimmed = explanation
             .components(separatedBy: CharacterSet.newlines)
@@ -309,6 +373,32 @@ struct ResultView: View {
         guard let path = Bundle.main.path(forResource: name, ofType: ext),
               let uiImage = UIImage(contentsOfFile: path) else { return nil }
         return uiImage
+    }
+}
+
+private struct AIActionChipStyle: ButtonStyle {
+    let colors: [Color]
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(.white)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [colors.first?.opacity(0.92) ?? .blue, colors.last ?? .blue],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
+            )
+            .shadow(color: (colors.last ?? .blue).opacity(0.25), radius: 8, x: 0, y: 3)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 

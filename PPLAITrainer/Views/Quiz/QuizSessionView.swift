@@ -237,7 +237,7 @@ struct QuizSessionView: View {
                     Button {
                         viewModel.showHintSheet()
                     } label: {
-                        compactActionLabel("Hint", systemImage: "lightbulb")
+                        compactActionLabel("Hint", systemImage: "lightbulb", color: .orange)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Get hint")
@@ -247,7 +247,7 @@ struct QuizSessionView: View {
                         Button {
                             viewModel.explainSelectedText()
                         } label: {
-                            compactActionLabel("Explain", systemImage: "text.quote")
+                            compactActionLabel("Explain", systemImage: "text.quote", color: .blue)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Explain selected text")
@@ -275,27 +275,34 @@ struct QuizSessionView: View {
             }
         }
         .padding(.bottom, 8)
-        .background(.regularMaterial)
+        .background(Color(.systemBackground))
     }
 
-    private func compactActionLabel(_ title: String, systemImage: String) -> some View {
+    private func compactActionLabel(_ title: String, systemImage: String, color: Color) -> some View {
         HStack(spacing: 6) {
             Image(systemName: systemImage)
                 .font(.caption.weight(.semibold))
             Text(title)
                 .font(.caption.weight(.semibold))
         }
-        .foregroundStyle(.primary)
+        .foregroundStyle(.white)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(
             Capsule(style: .continuous)
-                .fill(.ultraThinMaterial)
+                .fill(
+                    LinearGradient(
+                        colors: [color.opacity(0.9), color],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
         )
         .overlay(
             Capsule(style: .continuous)
-                .strokeBorder(Color.white.opacity(0.24), lineWidth: 1)
+                .strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
         )
+        .shadow(color: color.opacity(0.28), radius: 6, x: 0, y: 2)
     }
     
     private func segmentColor(for index: Int) -> Color {
@@ -346,15 +353,11 @@ private struct QuickAIResponseSheet: View {
             }
 
             if isLoading {
-                VStack(alignment: .leading, spacing: 10) {
-                    ProgressView()
-                    Text("Generating response...")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: AppCornerRadius.medium))
+                LoadingAnimationView(
+                    requestCount: 0,
+                    title: "Generating your response",
+                    presentation: .panel
+                )
             } else if let content, !content.isEmpty {
                 ScrollView {
                     AIMarkdownMathView(content: content)

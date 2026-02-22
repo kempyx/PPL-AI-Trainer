@@ -76,6 +76,7 @@ class MockDatabaseManager: DatabaseManaging {
     func clearQuizSession() throws {}
     func saveAIResponse(_ cache: AIResponseCache) throws {}
     func fetchAIResponse(questionId: Int64, responseType: String) throws -> AIResponseCache? { nil }
+    func clearAIResponseCache(responseTypes: [String]) throws {}
     func searchQuestions(query: String, limit: Int) throws -> [Question] { [] }
     func saveQuestionReport(questionId: Int64, reason: String, details: String?) throws {}
     func logInteractionEvent(name: String, questionId: Int64?, metadata: String?) throws {}

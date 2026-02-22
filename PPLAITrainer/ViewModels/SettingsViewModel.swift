@@ -47,6 +47,10 @@ final class SettingsViewModel {
         didSet { settingsManager.confirmBeforeSending = confirmBeforeSending }
     }
 
+    var showPremiumContent: Bool {
+        didSet { settingsManager.showPremiumContent = showPremiumContent }
+    }
+
     var appearanceMode: String {
         didSet { settingsManager.appearanceMode = appearanceMode }
     }
@@ -126,6 +130,7 @@ final class SettingsViewModel {
         self.selectedModel = provider.resolveModelId(settingsManager.selectedModel)
         self.aiEnabled = settingsManager.aiEnabled
         self.confirmBeforeSending = settingsManager.confirmBeforeSending
+        self.showPremiumContent = settingsManager.showPremiumContent
         self.appearanceMode = settingsManager.appearanceMode
         self.systemPrompt = settingsManager.systemPrompt
         self.aiPrompts = Dictionary(uniqueKeysWithValues: SettingsManager.AIPromptKey.allCases.map { ($0, settingsManager.prompt(for: $0)) })
