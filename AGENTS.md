@@ -18,9 +18,9 @@ Ship safe, incremental changes to `PPLAITrainer` with reproducible local verific
 - Do not edit bundled question content directly in app code.
 
 ## Change Workflow
-1. Read `/Users/kemp.calalo/Documents/ios/PPLAITrainer/CLAUDE.md` for architecture and domain context.
+1. Read `CLAUDE.md` for architecture and domain context.
 2. Make the smallest viable change that resolves the task.
-3. Run `/Users/kemp.calalo/Documents/ios/PPLAITrainer/scripts/check.sh`.
+3. Run `./scripts/check.sh`.
 4. If `check.sh` falls back to cloud-safe checks (no Xcode), report that full iOS compilation still requires a macOS runner or local Mac.
 5. If build/check cannot run in sandbox, report the exact blocker and what was still validated.
 
