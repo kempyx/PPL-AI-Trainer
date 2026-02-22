@@ -21,7 +21,7 @@ struct QuizSessionView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
+        ZStack {
             VStack(spacing: 0) {
                 if let current = viewModel.currentQuestion {
                     // Segmented Progress Bar
@@ -95,31 +95,6 @@ struct QuizSessionView: View {
                     quizActionRail
                 }
             }
-
-            if viewModel.hasSubmitted && isAIAvailable {
-                Button {
-                    viewModel.aiConversation?.showAISheet = true
-                } label: {
-                    Image(systemName: "sparkles")
-                        .font(.title2)
-                        .foregroundStyle(.white)
-                        .frame(width: 56, height: 56)
-                        .background(
-                            Circle()
-                                .fill(.linearGradient(
-                                    colors: [.purple, .blue],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ))
-                        )
-                        .shadow(color: .purple.opacity(0.4), radius: 8, y: 4)
-                }
-                .accessibilityLabel("Ask AI about this question")
-                .padding(.trailing, 20)
-                .padding(.bottom, 20)
-                .transition(.scale.combined(with: .opacity))
-                .animation(.spring(duration: 0.3), value: viewModel.hasSubmitted)
-            }
         }
         .navigationTitle("Quiz")
         .navigationBarTitleDisplayMode(.inline)
@@ -141,14 +116,15 @@ struct QuizSessionView: View {
                 }
             }
         }
-        .sheet(isPresented: Binding(
-            get: { viewModel.aiConversation?.showAISheet ?? false },
-            set: { if !$0 { viewModel.aiConversation?.showAISheet = false } }
-        )) {
-            if let aiVM = viewModel.aiConversation {
-                AIConversationSheet(viewModel: aiVM)
-                    .presentationDetents([.large])
-            }
+        .sheet(isPresented: $viewModel.showAIResponseSheet) {
+            QuickAIResponseSheet(
+                title: viewModel.aiResponseSheetTitle,
+                isLoading: viewModel.isLoadingAIResponseSheet,
+                content: viewModel.aiResponseSheetBody
+            )
+            .presentationDetents([.fraction(0.45), .medium])
+            .presentationBackground(.ultraThinMaterial)
+            .presentationDragIndicator(.visible)
         }
         .navigationDestination(isPresented: Binding(
             get: { reviewWrongAnswersVM != nil },
@@ -256,60 +232,29 @@ struct QuizSessionView: View {
     private var quizActionRail: some View {
         VStack(spacing: 8) {
             if isAIAvailable,
-               viewModel.isFloatingExplainEnabled,
-               let selected = viewModel.selectedExplainText,
-               !selected.isEmpty {
-                Button {
-                    viewModel.explainSelectedText()
-                } label: {
-                    HStack {
-                        Image(systemName: "text.quote")
-                        Text("Explain Selection")
-                        Spacer()
-                        Text("\"\(selected.prefix(20))\"")
-                            .lineLimit(1)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .buttonStyle(SecondaryButtonStyle())
-                .padding(.horizontal)
-                .accessibilityLabel("Explain selected text")
-                .accessibilityHint("Ask AI to explain the selected aviation term in context")
-            }
-
-            if isAIAvailable,
-               viewModel.isPreSubmitHintEnabled,
                !viewModel.hasSubmitted {
-                Button {
-                    viewModel.getQuestionHint()
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "lightbulb")
-                        Text("Hint")
+                HStack(spacing: 8) {
+                    Button {
+                        viewModel.showHintSheet()
+                    } label: {
+                        compactActionLabel("Hint", systemImage: "lightbulb")
                     }
-                }
-                .buttonStyle(SecondaryButtonStyle())
-                .padding(.horizontal)
-                .accessibilityLabel("Get hint")
-                .accessibilityHint("Get guidance without revealing the answer")
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Get hint")
+                    .accessibilityHint("Get guidance without revealing the answer")
 
-                if viewModel.isLoadingHint {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal)
-                } else if let hint = viewModel.aiHint, !hint.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Hint")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        AIMarkdownMathView(content: hint)
+                    if let selected = viewModel.selectedExplainText, !selected.isEmpty {
+                        Button {
+                            viewModel.explainSelectedText()
+                        } label: {
+                            compactActionLabel("Explain", systemImage: "text.quote")
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Explain selected text")
+                        .accessibilityHint("Ask AI to explain the selected aviation term in context")
                     }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
-                    .padding(.horizontal)
                 }
+                .padding(.horizontal)
             }
 
             if viewModel.hasSubmitted {
@@ -331,6 +276,26 @@ struct QuizSessionView: View {
         }
         .padding(.bottom, 8)
         .background(.regularMaterial)
+    }
+
+    private func compactActionLabel(_ title: String, systemImage: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+            Text(title)
+                .font(.caption.weight(.semibold))
+        }
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            Capsule(style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            Capsule(style: .continuous)
+                .strokeBorder(Color.white.opacity(0.24), lineWidth: 1)
+        )
     }
     
     private func segmentColor(for index: Int) -> Color {
@@ -365,4 +330,40 @@ struct QuizSessionView: View {
 
 #Preview {
     QuizSessionView(viewModel: Dependencies.preview.makeQuizViewModel())
+}
+
+private struct QuickAIResponseSheet: View {
+    let title: String
+    let isLoading: Bool
+    let content: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label(title, systemImage: "sparkles")
+                    .font(.headline)
+                Spacer()
+            }
+
+            if isLoading {
+                VStack(alignment: .leading, spacing: 10) {
+                    ProgressView()
+                    Text("Generating response...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: AppCornerRadius.medium))
+            } else if let content, !content.isEmpty {
+                ScrollView {
+                    AIMarkdownMathView(content: content)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                ContentUnavailableView("No Response", systemImage: "sparkles")
+            }
+        }
+        .padding()
+    }
 }

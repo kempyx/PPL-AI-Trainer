@@ -28,14 +28,10 @@ final class QuizViewModel {
     var aiInlineResponse: String? = nil
     var isLoadingInlineAI: Bool = false
     var selectedExplainText: String? = nil
-    
-    var isPreSubmitHintEnabled: Bool {
-        settingsManager.experimentVariant(for: .hintTiming) == "pre_submit_hint"
-    }
-    
-    var isFloatingExplainEnabled: Bool {
-        settingsManager.experimentVariant(for: .contextualExplainEntry) == "floating_cta"
-    }
+    var showAIResponseSheet: Bool = false
+    var aiResponseSheetTitle: String = "AI Help"
+    var aiResponseSheetBody: String? = nil
+    var isLoadingAIResponseSheet: Bool = false
     
     enum AIRequestType: String {
         case explain = "explain"
@@ -137,7 +133,7 @@ final class QuizViewModel {
                 logInteractionEvent(
                     name: "quiz_session_started",
                     questionId: nil,
-                    metadata: "questionCount=\(questions.count);hint=\(isPreSubmitHintEnabled ? "pre_submit_hint" : "control");explain=\(isFloatingExplainEnabled ? "floating_cta" : "control")"
+                    metadata: "questionCount=\(questions.count);hint=quick_sheet;explain=selection_only"
                 )
             }
         } catch {
@@ -246,6 +242,10 @@ final class QuizViewModel {
         showCorrectFlash = false
         showIncorrectFlash = false
         selectedExplainText = nil
+        showAIResponseSheet = false
+        aiResponseSheetTitle = "AI Help"
+        aiResponseSheetBody = nil
+        isLoadingAIResponseSheet = false
         aiConversation?.chatMessages = []
         if currentIndex >= questions.count {
             let accuracy = questionsAnswered > 0 ? Double(correctCount) / Double(questionsAnswered) : 0
@@ -266,6 +266,10 @@ final class QuizViewModel {
         showCorrectFlash = false
         showIncorrectFlash = false
         selectedExplainText = nil
+        showAIResponseSheet = false
+        aiResponseSheetTitle = "AI Help"
+        aiResponseSheetBody = nil
+        isLoadingAIResponseSheet = false
         aiConversation?.chatMessages = []
     }
     
@@ -344,12 +348,22 @@ final class QuizViewModel {
     // MARK: - AI Hint
     
     func getQuestionHint() {
+        showHintSheet()
+    }
+
+    func showHintSheet() {
         guard let current = currentQuestion else { return }
+        showAIResponseSheet = true
+        aiResponseSheetTitle = "Hint"
+        aiResponseSheetBody = nil
+        isLoadingAIResponseSheet = true
         logInteractionEvent(name: "quiz_hint_requested", questionId: current.question.id, metadata: hasSubmitted ? "context=result" : "context=question")
         
         // Check cache first
         if let cached = try? databaseManager.fetchAIResponse(questionId: current.question.id, responseType: "hint") {
             aiHint = cached.response
+            aiResponseSheetBody = cached.response
+            isLoadingAIResponseSheet = false
             logInteractionEvent(name: "quiz_hint_cache_hit", questionId: current.question.id, metadata: nil)
             return
         }
@@ -371,6 +385,7 @@ final class QuizViewModel {
                 
                 let response = try await aiService.sendChat(messages: messages)
                 aiHint = response
+                aiResponseSheetBody = response
                 
                 // Cache the response
                 let cache = AIResponseCache(
@@ -384,10 +399,13 @@ final class QuizViewModel {
                 logInteractionEvent(name: "quiz_hint_generated", questionId: current.question.id, metadata: nil)
                 
                 isLoadingHint = false
+                isLoadingAIResponseSheet = false
             } catch {
                 aiHint = "Unable to generate hint. Please try again."
+                aiResponseSheetBody = "Unable to generate hint. Please try again."
                 logInteractionEvent(name: "quiz_hint_failed", questionId: current.question.id, metadata: nil)
                 isLoadingHint = false
+                isLoadingAIResponseSheet = false
             }
         }
     }
@@ -464,17 +482,54 @@ final class QuizViewModel {
         guard settingsManager.aiEnabled,
               let current = currentQuestion,
               let selectedExplainText else { return }
+        showAIResponseSheet = true
+        aiResponseSheetTitle = "Explain Selection"
+        aiResponseSheetBody = nil
+        isLoadingAIResponseSheet = true
+        
+        let normalizedSelectedText = selectedExplainText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let responseType = contextualExplainCacheKey(for: normalizedSelectedText)
+        
+        if let cached = try? databaseManager.fetchAIResponse(questionId: current.question.id, responseType: responseType) {
+            aiResponseSheetBody = cached.response
+            isLoadingAIResponseSheet = false
+            logInteractionEvent(name: "quiz_contextual_explain_cache_hit", questionId: current.question.id, metadata: "selection=\(normalizedSelectedText.prefix(60))")
+            return
+        }
 
-        let prompt = settingsManager.renderPrompt(.contextualExplain, values: [
-            "selectedText": selectedExplainText,
-            "question": current.question.text,
-            "correctAnswer": current.shuffledAnswers[current.correctAnswerIndex],
-            "officialExplanation": current.question.explanation.map { "Official explanation: \($0)" } ?? ""
-        ])
-
-        aiConversation?.showAISheet = true
-        aiConversation?.sendChatMessage(prompt)
         logInteractionEvent(name: "quiz_contextual_explain_requested", questionId: current.question.id, metadata: "selection=\(selectedExplainText.prefix(60))")
+        
+        Task { @MainActor in
+            do {
+                let prompt = settingsManager.renderPrompt(.contextualExplain, values: [
+                    "selectedText": normalizedSelectedText,
+                    "question": current.question.text,
+                    "correctAnswer": current.shuffledAnswers[current.correctAnswerIndex],
+                    "officialExplanation": current.question.explanation.map { "Official explanation: \($0)" } ?? ""
+                ])
+                
+                let messages = [ChatMessage(role: .system, content: settingsManager.systemPrompt),
+                               ChatMessage(role: .user, content: prompt)]
+                
+                let response = try await aiService.sendChat(messages: messages)
+                aiResponseSheetBody = response
+                isLoadingAIResponseSheet = false
+                
+                let cache = AIResponseCache(
+                    id: nil,
+                    questionId: current.question.id,
+                    responseType: responseType,
+                    response: response,
+                    createdAt: Date()
+                )
+                try? databaseManager.saveAIResponse(cache)
+                logInteractionEvent(name: "quiz_contextual_explain_generated", questionId: current.question.id, metadata: "selection=\(normalizedSelectedText.prefix(60))")
+            } catch {
+                aiResponseSheetBody = "Unable to generate explanation. Please try again."
+                isLoadingAIResponseSheet = false
+                logInteractionEvent(name: "quiz_contextual_explain_failed", questionId: current.question.id, metadata: "selection=\(normalizedSelectedText.prefix(60))")
+            }
+        }
     }
     
     // MARK: - Visual Prompt Generation
@@ -533,5 +588,15 @@ final class QuizViewModel {
 
     private func logInteractionEvent(name: String, questionId: Int64?, metadata: String?) {
         try? databaseManager.logInteractionEvent(name: name, questionId: questionId, metadata: metadata)
+    }
+    
+    private func contextualExplainCacheKey(for selectedText: String) -> String {
+        "context_explain_\(stableHash(selectedText.lowercased()))"
+    }
+    
+    private func stableHash(_ input: String) -> UInt64 {
+        input.utf8.reduce(5381) { hash, byte in
+            ((hash << 5) &+ hash) &+ UInt64(byte)
+        }
     }
 }

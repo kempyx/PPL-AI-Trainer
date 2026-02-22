@@ -121,61 +121,6 @@ struct ResultView: View {
                     }
                 }
 
-                if isAIAvailable, let selectedExplainText, !selectedExplainText.isEmpty {
-                    Button {
-                        viewModel.updateSelectedExplainText(selectedExplainText)
-                        viewModel.explainSelectedText()
-                    } label: {
-                        HStack {
-                            Image(systemName: "text.quote")
-                            Text("Explain Selection")
-                            Spacer()
-                            Text("\"\(selectedExplainText.prefix(24))\"")
-                                .lineLimit(1)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .buttonStyle(SecondaryButtonStyle())
-                }
-                
-                if isAIAvailable {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("AI help is a study aid. Use the official explanation above as your source of truth.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        HStack(spacing: 8) {
-                            ForEach([QuizViewModel.AIRequestType.explain, .simplify, .analogy, .commonMistakes], id: \.self) { type in
-                                Button {
-                                    viewModel.requestInlineAI(type: type)
-                                } label: {
-                                    Text(type.buttonLabel)
-                                        .font(.caption.weight(.medium))
-                                }
-                                .buttonStyle(.bordered)
-                                .tint(.purple)
-                            }
-                        }
-                        
-                        if viewModel.isLoadingInlineAI {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                        }
-                        
-                        if let response = viewModel.aiInlineResponse {
-                            VStack(alignment: .leading) {
-                                Text("AI Response")
-                                    .font(.headline)
-                                AIMarkdownMathView(content: response)
-                                    .padding()
-                                    .background(Color.purple.opacity(0.1))
-                                    .cornerRadius(AppCornerRadius.small)
-                            }
-                        }
-                    }
-                }
-                
                 if let mnemonic = viewModel.aiMnemonic {
                     VStack(alignment: .leading) {
                         Text("Mnemonic")
@@ -187,39 +132,6 @@ struct ResultView: View {
                     }
                 }
                 
-                if isAIAvailable && viewModel.selectedAnswer != question.correctAnswerIndex {
-                    VStack(alignment: .leading, spacing: 12) {
-                        if viewModel.aiHint == nil && !viewModel.isLoadingHint {
-                            Button {
-                                viewModel.getQuestionHint()
-                            } label: {
-                                HStack {
-                                    Image(systemName: "lightbulb")
-                                    Text("Get a Hint")
-                                }
-                            }
-                            .buttonStyle(SecondaryButtonStyle())
-                        }
-                        
-                        if viewModel.isLoadingHint {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                        }
-                        
-                        if let hint = viewModel.aiHint {
-                            VStack(alignment: .leading) {
-                                Text("Hint")
-                                    .font(.headline)
-                                AIMarkdownMathView(content: hint)
-                                    .padding()
-                                    .background(Color.orange.opacity(0.1))
-                                    .cornerRadius(AppCornerRadius.small)
-                            }
-                        }
-                    }
-                }
-                
-
                 if isAIAvailable {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Visual Prompt Generator")
