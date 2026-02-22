@@ -77,6 +77,16 @@ struct XPBarView: View {
                     .font(.caption)
                     .foregroundColor(.yellow)
             }
+
+            Divider()
+
+            HStack(spacing: 8) {
+                Label("View badges and goals", systemImage: "rosette")
+                Spacer()
+                Image(systemName: "chevron.right")
+            }
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.secondary)
         }
         .padding()
         .background(.regularMaterial)

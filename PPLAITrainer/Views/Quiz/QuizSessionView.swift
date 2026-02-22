@@ -9,6 +9,7 @@ struct QuizSessionView: View {
     @State private var reviewWrongAnswersVM: QuizViewModel?
     @State private var autoSubmitTask: Task<Void, Never>?
     @State private var hintSheetDetent: PresentationDetent = .fraction(0.45)
+    @State private var showAchievementsSheet = false
 
     private var scorePercentage: Int {
         guard viewModel.questionsAnswered > 0 else { return 0 }
@@ -129,6 +130,11 @@ struct QuizSessionView: View {
                 .presentationBackground(.ultraThinMaterial)
                 .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $showAchievementsSheet) {
+            NavigationStack {
+                AchievementsView()
+            }
+        }
         .onChange(of: viewModel.showAIResponseSheet) { _, isPresented in
             if isPresented && viewModel.aiResponseSheetTitle == "Hint" {
                 hintSheetDetent = .fraction(0.45)
@@ -144,9 +150,16 @@ struct QuizSessionView: View {
         }
         .overlay {
             if let achievement = viewModel.gamificationService.recentlyUnlockedAchievements.first {
-                BadgeUnlockModal(achievement: achievement) {
-                    viewModel.gamificationService.recentlyUnlockedAchievements.removeFirst()
-                }
+                BadgeUnlockModal(
+                    achievement: achievement,
+                    onDismiss: {
+                        viewModel.gamificationService.recentlyUnlockedAchievements.removeFirst()
+                    },
+                    onViewAll: {
+                        viewModel.gamificationService.recentlyUnlockedAchievements.removeFirst()
+                        showAchievementsSheet = true
+                    }
+                )
             }
         }
         .overlay {

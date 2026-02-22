@@ -3,8 +3,19 @@ import SwiftUI
 struct BadgeUnlockModal: View {
     let achievement: AchievementDefinition
     let onDismiss: () -> Void
+    let onViewAll: (() -> Void)?
     
     @State private var scale: CGFloat = 0.5
+
+    init(
+        achievement: AchievementDefinition,
+        onDismiss: @escaping () -> Void,
+        onViewAll: (() -> Void)? = nil
+    ) {
+        self.achievement = achievement
+        self.onDismiss = onDismiss
+        self.onViewAll = onViewAll
+    }
     
     var body: some View {
         ZStack {
@@ -37,7 +48,14 @@ struct BadgeUnlockModal: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
                 
-                Button("Awesome!") {
+                if let onViewAll {
+                    Button("View All Badges") {
+                        onViewAll()
+                    }
+                    .buttonStyle(SecondaryButtonStyle())
+                }
+
+                Button("Continue") {
                     onDismiss()
                 }
                 .buttonStyle(PrimaryButtonStyle())
