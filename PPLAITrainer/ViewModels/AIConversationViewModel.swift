@@ -32,28 +32,28 @@ class AIConversationViewModel {
     func requestExplanation() {
         guard let context = contextProvider() else { return }
         let systemMsg = ChatMessage(role: .system, content: context)
-        let userMsg = ChatMessage(role: .user, content: "Explain why the correct answer is right.")
+        let userMsg = ChatMessage(role: .user, content: settingsManager.prompt(for: .quickActionExplain))
         executeRequest(system: systemMsg, user: userMsg)
     }
     
     func requestSimplification() {
         guard let context = contextProvider() else { return }
         let systemMsg = ChatMessage(role: .system, content: context)
-        let userMsg = ChatMessage(role: .user, content: "Simplify this concept. Break it down into simple terms.")
+        let userMsg = ChatMessage(role: .user, content: settingsManager.prompt(for: .quickActionSimplify))
         executeRequest(system: systemMsg, user: userMsg)
     }
     
     func requestAnalogy() {
         guard let context = contextProvider() else { return }
         let systemMsg = ChatMessage(role: .system, content: context)
-        let userMsg = ChatMessage(role: .user, content: "Give me a real-world analogy to help me understand this concept.")
+        let userMsg = ChatMessage(role: .user, content: settingsManager.prompt(for: .quickActionAnalogy))
         executeRequest(system: systemMsg, user: userMsg)
     }
     
     func requestCommonMistakes() {
         guard let context = contextProvider() else { return }
         let systemMsg = ChatMessage(role: .system, content: context)
-        let userMsg = ChatMessage(role: .user, content: "What do students commonly get wrong about this? What should I watch out for?")
+        let userMsg = ChatMessage(role: .user, content: settingsManager.prompt(for: .quickActionMistakes))
         executeRequest(system: systemMsg, user: userMsg)
     }
     

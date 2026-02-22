@@ -43,16 +43,16 @@ final class QuizViewModel {
         case analogy = "analogy"
         case commonMistakes = "mistakes"
         
-        var prompt: String {
+        func prompt(using settingsManager: SettingsManager) -> String {
             switch self {
             case .explain:
-                return "Explain this concept in more detail, focusing on the aviation principles involved."
+                return settingsManager.prompt(for: .inlineExplain)
             case .simplify:
-                return "Simplify this explanation using plain language that a beginner pilot can understand."
+                return settingsManager.prompt(for: .inlineSimplify)
             case .analogy:
-                return "Provide a helpful analogy or real-world example to illustrate this concept."
+                return settingsManager.prompt(for: .inlineAnalogy)
             case .commonMistakes:
-                return "Explain the most common mistakes students make with this question and how to avoid them."
+                return settingsManager.prompt(for: .inlineMistakes)
             }
         }
         
@@ -357,21 +357,14 @@ final class QuizViewModel {
         isLoadingHint = true
         Task { @MainActor in
             do {
-                let hintPrompt = """
-                You are a flight instructor. Give a brief hint to help the student figure out the answer without revealing it directly.
-                
-                Question: \(current.question.text)
-                
-                Choices:
-                A. \(current.shuffledAnswers[0])
-                B. \(current.shuffledAnswers[1])
-                C. \(current.shuffledAnswers[2])
-                D. \(current.shuffledAnswers[3])
-                
-                Correct answer: \(current.shuffledAnswers[current.correctAnswerIndex])
-                
-                Provide a helpful hint that guides the student toward the correct answer without stating it explicitly.
-                """
+                let hintPrompt = settingsManager.renderPrompt(.hintRequest, values: [
+                    "question": current.question.text,
+                    "choiceA": current.shuffledAnswers[0],
+                    "choiceB": current.shuffledAnswers[1],
+                    "choiceC": current.shuffledAnswers[2],
+                    "choiceD": current.shuffledAnswers[3],
+                    "correctAnswer": current.shuffledAnswers[current.correctAnswerIndex]
+                ])
                 
                 let messages = [ChatMessage(role: .system, content: settingsManager.systemPrompt),
                                ChatMessage(role: .user, content: hintPrompt)]
@@ -407,7 +400,7 @@ final class QuizViewModel {
         if let cached = try? databaseManager.fetchAIResponse(questionId: current.question.id, responseType: type.rawValue) {
             aiInlineResponse = cached.response
             // Add to conversation history
-            aiConversation?.chatMessages.append(ChatMessage(role: .user, content: type.prompt))
+            aiConversation?.chatMessages.append(ChatMessage(role: .user, content: type.prompt(using: settingsManager)))
             aiConversation?.chatMessages.append(ChatMessage(role: .assistant, content: cached.response))
             return
         }
@@ -429,7 +422,7 @@ final class QuizViewModel {
                 \(current.question.explanation ?? "")
                 """
                 
-                let prompt = "\(type.prompt)\n\n\(context)"
+                let prompt = type.prompt(using: settingsManager).replacingOccurrences(of: "{{context}}", with: context)
                 let messages = [ChatMessage(role: .system, content: settingsManager.systemPrompt),
                                ChatMessage(role: .user, content: prompt)]
                 
@@ -437,7 +430,7 @@ final class QuizViewModel {
                 aiInlineResponse = response
                 
                 // Add to conversation history
-                aiConversation?.chatMessages.append(ChatMessage(role: .user, content: type.prompt))
+                aiConversation?.chatMessages.append(ChatMessage(role: .user, content: type.prompt(using: settingsManager)))
                 aiConversation?.chatMessages.append(ChatMessage(role: .assistant, content: response))
                 
                 // Cache the response
@@ -472,14 +465,12 @@ final class QuizViewModel {
               let current = currentQuestion,
               let selectedExplainText else { return }
 
-        let prompt = """
-        Explain this selected aviation term from the question in a concise, exam-focused way.
-
-        Selected text: "\(selectedExplainText)"
-        Question: \(current.question.text)
-        Correct answer: \(current.shuffledAnswers[current.correctAnswerIndex])
-        \(current.question.explanation.map { "Official explanation: \($0)" } ?? "")
-        """
+        let prompt = settingsManager.renderPrompt(.contextualExplain, values: [
+            "selectedText": selectedExplainText,
+            "question": current.question.text,
+            "correctAnswer": current.shuffledAnswers[current.correctAnswerIndex],
+            "officialExplanation": current.question.explanation.map { "Official explanation: \($0)" } ?? ""
+        ])
 
         aiConversation?.showAISheet = true
         aiConversation?.sendChatMessage(prompt)
@@ -497,23 +488,12 @@ final class QuizViewModel {
         guard let current = currentQuestion else { return "" }
         
         let mediaType = type == .image ? "image" : "video"
-        let systemContext = "You are an experienced flight instructor creating visual learning materials."
-        
-        let prompt = """
-        \(systemContext)
-        
-        Create a detailed prompt for generating a \(mediaType) that illustrates the following aviation concept:
-        
-        Question: \(current.question.text)
-        
-        Correct Answer: \(current.shuffledAnswers[current.correctAnswerIndex])
-        
-        \(current.question.explanation ?? "")
-        
-        The \(mediaType) should help a student pilot understand this concept visually. Focus on cockpit diagrams, flight paths, instrument readings, or other relevant aviation visuals.
-        """
-        
-        return prompt
+        return settingsManager.renderPrompt(.visualGeneration, values: [
+            "mediaType": mediaType,
+            "question": current.question.text,
+            "correctAnswer": current.shuffledAnswers[current.correctAnswerIndex],
+            "officialExplanation": current.question.explanation ?? ""
+        ])
     }
     
     // MARK: - Session Persistence
