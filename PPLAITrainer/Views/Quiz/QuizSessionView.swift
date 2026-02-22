@@ -102,7 +102,7 @@ struct QuizSessionView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
-                    if viewModel.currentIndex > 0 {
+                    if viewModel.currentQuestion != nil, viewModel.currentIndex > 0 {
                         viewModel.previousQuestion()
                     } else {
                         viewModel.saveSessionState(categoryId: nil, categoryName: nil)
@@ -111,7 +111,7 @@ struct QuizSessionView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
-                        Text(viewModel.currentIndex > 0 ? "Previous" : "Back")
+                        Text(viewModel.currentQuestion != nil && viewModel.currentIndex > 0 ? "Previous" : "Back")
                     }
                 }
             }
