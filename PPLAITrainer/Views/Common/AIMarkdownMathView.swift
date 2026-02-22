@@ -57,14 +57,20 @@ private struct AIMarkdownMathWebView: UIViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: Coordinator.heightMessageName)
     }
 
-    private static func localAssetsBaseURL() -> URL? {
+    private static func localAssetsBaseURL() -> URL {
         let bundles = [Bundle.main, Bundle(for: Coordinator.self)]
+        let subdirectories = ["AIRenderer", nil]
+
         for bundle in bundles {
-            if let markedURL = bundle.url(forResource: "marked.min", withExtension: "js", subdirectory: "AIRenderer") {
-                return markedURL.deletingLastPathComponent()
+            for subdirectory in subdirectories {
+                if let markedURL = bundle.url(forResource: "marked.min", withExtension: "js", subdirectory: subdirectory) {
+                    return markedURL.deletingLastPathComponent()
+                }
             }
         }
-        return nil
+
+        // Xcode may flatten copied resource paths into the app bundle root in some build configurations.
+        return Bundle.main.bundleURL
     }
 
     static let htmlTemplate = """
