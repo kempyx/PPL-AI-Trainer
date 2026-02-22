@@ -620,19 +620,12 @@ final class QuizViewModel {
 
         Task { @MainActor in
             do {
-                let prompt = settingsManager.renderPrompt(.contextualExplain, values: [
+                let prompt = settingsManager.renderPrompt(.choiceExplain, values: [
                     "selectedText": normalizedChoice,
                     "question": current.question.text,
                     "correctAnswer": current.shuffledAnswers[current.correctAnswerIndex],
-                    "officialExplanation": current.question.explanation.map { "Official explanation (for instructor grounding only; do not reveal answer): \($0)" } ?? ""
-                ]) + """
-
-                Additional constraints for this request:
-                - You are explaining one selected choice before answer reveal.
-                - Do not reveal, quote, or imply which choice is correct.
-                - Do not mention if this selected choice is right or wrong.
-                - Focus on terminology, what the choice means, and when it applies.
-                """
+                    "officialExplanation": current.question.explanation.map { "Official explanation: \($0)" } ?? ""
+                ])
 
                 let messages = [
                     ChatMessage(role: .system, content: settingsManager.systemPrompt),
