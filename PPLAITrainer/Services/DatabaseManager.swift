@@ -162,12 +162,16 @@ final class DatabaseManager: DatabaseManaging {
         let dbPath = try configuration.localDatabaseURL(fileManager: fileManager)
 
         if !fileManager.fileExists(atPath: dbPath.path) {
-            guard let bundlePath = Self.resolveBundledDatabasePath(for: configuration.dataset, in: .main) else {
-                logger.error("Bundled database not found in app bundle for dataset \(configuration.dataset.id, privacy: .public)")
-                throw NSError(domain: "DatabaseManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Bundled database not found"])
+            if try Self.migrateLegacyDatabaseIfNeeded(configuration: configuration, destinationURL: dbPath, fileManager: fileManager) {
+                logger.info("Legacy database migrated for dataset \(configuration.dataset.id, privacy: .public) profile \(configuration.profileId, privacy: .public) to \(dbPath.path, privacy: .public)")
+            } else {
+                guard let bundlePath = Self.resolveBundledDatabasePath(for: configuration.dataset, in: .main) else {
+                    logger.error("Bundled database not found in app bundle for dataset \(configuration.dataset.id, privacy: .public)")
+                    throw NSError(domain: "DatabaseManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Bundled database not found"])
+                }
+                try fileManager.copyItem(atPath: bundlePath, toPath: dbPath.path)
+                logger.info("Database copied for dataset \(configuration.dataset.id, privacy: .public) profile \(configuration.profileId, privacy: .public) to \(dbPath.path, privacy: .public)")
             }
-            try fileManager.copyItem(atPath: bundlePath, toPath: dbPath.path)
-            logger.info("Database copied for dataset \(configuration.dataset.id, privacy: .public) profile \(configuration.profileId, privacy: .public) to \(dbPath.path, privacy: .public)")
         } else {
             logger.info("Database already exists for dataset \(configuration.dataset.id, privacy: .public) profile \(configuration.profileId, privacy: .public) at \(dbPath.path, privacy: .public)")
         }
@@ -188,6 +192,55 @@ final class DatabaseManager: DatabaseManaging {
             return path
         }
         return nil
+    }
+
+    private static func migrateLegacyDatabaseIfNeeded(
+        configuration: Configuration,
+        destinationURL: URL,
+        fileManager: FileManager
+    ) throws -> Bool {
+        guard let legacyURL = resolveLegacyDatabaseURL(for: configuration, fileManager: fileManager) else {
+            return false
+        }
+        guard fileManager.fileExists(atPath: legacyURL.path) else {
+            return false
+        }
+
+        do {
+            try fileManager.copyItem(at: legacyURL, to: destinationURL)
+            return true
+        } catch {
+            logger.error("Legacy database migration failed from \(legacyURL.path, privacy: .public) to \(destinationURL.path, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            throw NSError(
+                domain: "DatabaseManager",
+                code: 2,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "Unable to migrate existing study progress. Please retry and contact support if this persists."
+                ]
+            )
+        }
+    }
+
+    private static func resolveLegacyDatabaseURL(
+        for configuration: Configuration,
+        fileManager: FileManager
+    ) -> URL? {
+        guard configuration.dataset.databaseResourceName == "153-en",
+              configuration.dataset.databaseExtension == "sqlite",
+              configuration.profileId == configuration.dataset.id else {
+            return nil
+        }
+
+        guard let documents = try? fileManager.url(
+            for: .documentDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: false
+        ) else {
+            return nil
+        }
+
+        return documents.appendingPathComponent("153-en.sqlite")
     }
 
 
