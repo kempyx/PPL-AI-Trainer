@@ -137,23 +137,13 @@ struct ResultView: View {
                         Text("Visual Prompt Generator")
                             .font(.headline)
 
-                        HStack(spacing: 10) {
-                            Button {
-                                visualPromptText = viewModel.generateVisualPrompt(type: .image)
-                                showVisualPromptSheet = true
-                            } label: {
-                                Label("Generate Image", systemImage: "photo")
-                            }
-                            .buttonStyle(SecondaryButtonStyle())
-
-                            Button {
-                                visualPromptText = viewModel.generateVisualPrompt(type: .video)
-                                showVisualPromptSheet = true
-                            } label: {
-                                Label("Generate Video", systemImage: "video")
-                            }
-                            .buttonStyle(SecondaryButtonStyle())
+                        Button {
+                            visualPromptText = viewModel.generateVisualPrompt()
+                            showVisualPromptSheet = true
+                        } label: {
+                            Label("Generate Visual Prompt", systemImage: "photo")
                         }
+                        .buttonStyle(SecondaryButtonStyle())
                     }
                 }
 

@@ -102,17 +102,24 @@ final class SettingsManager {
         {{officialExplanation}}
         """,
         .visualGeneration: """
-        You are an experienced flight instructor creating visual learning materials.
+        You are creating a copy-paste-ready prompt for another LLM to generate a teaching image for a student pilot.
 
-        Create a detailed prompt for generating a {{mediaType}} that illustrates the following aviation concept:
+        Write a single final prompt that asks for:
+        - a simple educational diagram (not photorealistic art)
+        - clear labels, arrows, and short callouts
+        - the concept in the question
+        - the correct answer made explicit in the visual
+        - the official explanation represented visually
+        - any essential domain knowledge the image model should include to make the concept accurate
 
+        Keep the generated image style focused on clarity and learning: schematic, instructional, high-contrast, minimal clutter.
+
+        Include these source details inside the produced prompt:
         Question: {{question}}
-
         Correct Answer: {{correctAnswer}}
+        Official Explanation: {{officialExplanation}}
 
-        {{officialExplanation}}
-
-        The {{mediaType}} should help a student pilot understand this concept visually. Focus on cockpit diagrams, flight paths, instrument readings, or other relevant aviation visuals.
+        Output only the final prompt text.
         """
     ]
     
