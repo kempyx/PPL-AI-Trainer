@@ -9,6 +9,7 @@ final class SettingsManager {
         static let confirmBeforeSending = "confirmBeforeSending"
         static let appearanceMode = "appearanceMode"
         static let systemPrompt = "systemPrompt"
+        static let aiPromptOverrides = "aiPromptOverrides"
         static let selectedModel = "selectedModel"
         static let hasCompletedOnboarding = "hasCompletedOnboarding"
         static let examDateLeg1 = "examDateLeg1"
@@ -49,6 +50,71 @@ final class SettingsManager {
     - Briefly note why their answer was wrong (if applicable)
     - Only elaborate if they ask follow-up questions
     """
+
+    enum AIPromptKey: String, CaseIterable, Identifiable {
+        case system
+        case quickActionExplain
+        case quickActionSimplify
+        case quickActionAnalogy
+        case quickActionMistakes
+        case hintRequest
+        case inlineExplain
+        case inlineSimplify
+        case inlineAnalogy
+        case inlineMistakes
+        case contextualExplain
+        case visualGeneration
+
+        var id: String { rawValue }
+    }
+
+    static let defaultAIPrompts: [AIPromptKey: String] = [
+        .system: defaultSystemPrompt,
+        .quickActionExplain: "Explain why the correct answer is right.",
+        .quickActionSimplify: "Simplify this concept. Break it down into simple terms.",
+        .quickActionAnalogy: "Give me a real-world analogy to help me understand this concept.",
+        .quickActionMistakes: "What do students commonly get wrong about this? What should I watch out for?",
+        .hintRequest: """
+        You are a flight instructor. Give a brief hint to help the student figure out the answer without revealing it directly.
+
+        Question: {{question}}
+
+        Choices:
+        A. {{choiceA}}
+        B. {{choiceB}}
+        C. {{choiceC}}
+        D. {{choiceD}}
+
+        Correct answer: {{correctAnswer}}
+
+        Provide a helpful hint that guides the student toward the correct answer without stating it explicitly.
+        """,
+        .inlineExplain: "Explain this concept in more detail, focusing on the aviation principles involved.\n\n{{context}}",
+        .inlineSimplify: "Simplify this explanation using plain language that a beginner pilot can understand.\n\n{{context}}",
+        .inlineAnalogy: "Provide a helpful analogy or real-world example to illustrate this concept.\n\n{{context}}",
+        .inlineMistakes: "Explain the most common mistakes students make with this question and how to avoid them.\n\n{{context}}",
+        .contextualExplain: """
+        Explain this selected aviation term from the question in a concise, exam-focused way.
+
+        Selected text: "{{selectedText}}"
+        Question: {{question}}
+        Correct answer: {{correctAnswer}}
+        {{officialExplanation}}
+        """,
+        .visualGeneration: """
+        You are an experienced flight instructor creating visual learning materials.
+
+        Create a detailed prompt for generating a {{mediaType}} that illustrates the following aviation concept:
+
+        Question: {{question}}
+
+        Correct Answer: {{correctAnswer}}
+
+        {{officialExplanation}}
+
+        The {{mediaType}} should help a student pilot understand this concept visually. Focus on cockpit diagrams, flight paths, instrument readings, or other relevant aviation visuals.
+        """
+    ]
     
     private func notifyChange() {
         NotificationCenter.default.post(name: .settingsDidChange, object: nil)
@@ -75,8 +141,47 @@ final class SettingsManager {
     }
     
     var systemPrompt: String {
-        get { defaults.string(forKey: Keys.systemPrompt) ?? Self.defaultSystemPrompt }
-        set { defaults.set(newValue, forKey: Keys.systemPrompt) }
+        get { prompt(for: .system) }
+        set { setPrompt(newValue, for: .system) }
+    }
+
+    func prompt(for key: AIPromptKey) -> String {
+        if key == .system,
+           let legacyPrompt = defaults.string(forKey: Keys.systemPrompt),
+           promptOverrides[key.rawValue] == nil {
+            return legacyPrompt
+        }
+        return promptOverrides[key.rawValue] ?? Self.defaultAIPrompts[key] ?? ""
+    }
+
+    func setPrompt(_ prompt: String, for key: AIPromptKey) {
+        if key == .system {
+            defaults.set(prompt, forKey: Keys.systemPrompt)
+        }
+        var overrides = promptOverrides
+        let defaultValue = Self.defaultAIPrompts[key] ?? ""
+        if prompt == defaultValue {
+            overrides.removeValue(forKey: key.rawValue)
+        } else {
+            overrides[key.rawValue] = prompt
+        }
+        defaults.set(overrides, forKey: Keys.aiPromptOverrides)
+    }
+
+    func resetPrompt(_ key: AIPromptKey) {
+        setPrompt(Self.defaultAIPrompts[key] ?? "", for: key)
+    }
+
+    func renderPrompt(_ key: AIPromptKey, values: [String: String]) -> String {
+        var rendered = prompt(for: key)
+        for (token, value) in values {
+            rendered = rendered.replacingOccurrences(of: "{{\(token)}}", with: value)
+        }
+        return rendered
+    }
+
+    private var promptOverrides: [String: String] {
+        defaults.dictionary(forKey: Keys.aiPromptOverrides) as? [String: String] ?? [:]
     }
 
     var selectedModel: String? {

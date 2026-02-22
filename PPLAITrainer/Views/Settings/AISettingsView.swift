@@ -9,7 +9,7 @@ struct AISettingsView: View {
             VStack(spacing: 20) {
                 providerCard
                 confirmCard
-                systemPromptCard
+                promptLibraryCard
                 dangerZoneCard
             }
             .padding()
@@ -100,16 +100,16 @@ struct AISettingsView: View {
         }
     }
 
-    // MARK: - System Prompt
+    // MARK: - Prompt Library
 
-    private var systemPromptCard: some View {
+    private var promptLibraryCard: some View {
         SettingsCard {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    SettingsSectionHeader(icon: "text.bubble", title: "System Prompt", color: .orange)
+                    SettingsSectionHeader(icon: "text.bubble", title: "AI Prompts", color: .orange)
                     Spacer()
-                    if !viewModel.isDefaultPrompt {
-                        Text("Modified")
+                    if viewModel.modifiedPromptCount > 0 {
+                        Text("\(viewModel.modifiedPromptCount) modified")
                             .font(.caption)
                             .fontWeight(.medium)
                             .padding(.horizontal, 8)
@@ -120,16 +120,15 @@ struct AISettingsView: View {
                     }
                 }
 
-                Text(viewModel.systemPrompt)
+                Text("All AI providers use these shared prompts. Customize quick actions and templates in one place.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(3)
 
                 NavigationLink {
-                    SystemPromptEditor(viewModel: viewModel)
+                    AIPromptLibraryView(viewModel: viewModel)
                 } label: {
                     HStack {
-                        Text("Edit System Prompt")
+                        Text("Edit Prompts")
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.caption)

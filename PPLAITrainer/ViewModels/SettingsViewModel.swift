@@ -3,6 +3,15 @@ import Observation
 
 @Observable
 final class SettingsViewModel {
+    struct AIPromptItem: Identifiable {
+        let key: SettingsManager.AIPromptKey
+        let title: String
+        let description: String
+        let tokenHints: [String]
+
+        var id: String { key.rawValue }
+    }
+
     private let keychainStore: KeychainStore
     private(set) var settingsManager: SettingsManager
 
@@ -45,6 +54,8 @@ final class SettingsViewModel {
     var systemPrompt: String {
         didSet { settingsManager.systemPrompt = systemPrompt }
     }
+
+    var aiPrompts: [SettingsManager.AIPromptKey: String]
     
     var activeLeg: ExamLeg {
         didSet { settingsManager.activeLeg = activeLeg }
@@ -64,6 +75,27 @@ final class SettingsViewModel {
 
     var isDefaultPrompt: Bool {
         systemPrompt == SettingsManager.defaultSystemPrompt
+    }
+
+    var promptItems: [AIPromptItem] {
+        [
+            AIPromptItem(key: .system, title: "System Prompt", description: "Global instructions shared by all AI providers.", tokenHints: []),
+            AIPromptItem(key: .quickActionExplain, title: "Quick Action: Explain", description: "User message used by the one-tap Explain action.", tokenHints: []),
+            AIPromptItem(key: .quickActionSimplify, title: "Quick Action: Simplify", description: "User message used by the one-tap Simplify action.", tokenHints: []),
+            AIPromptItem(key: .quickActionAnalogy, title: "Quick Action: Analogy", description: "User message used by the one-tap Analogy action.", tokenHints: []),
+            AIPromptItem(key: .quickActionMistakes, title: "Quick Action: Mistakes", description: "User message used by the one-tap Mistakes action.", tokenHints: []),
+            AIPromptItem(key: .hintRequest, title: "Question Hint", description: "Prompt template for generating hints.", tokenHints: ["{{question}}", "{{choiceA}}", "{{choiceB}}", "{{choiceC}}", "{{choiceD}}", "{{correctAnswer}}"]),
+            AIPromptItem(key: .inlineExplain, title: "Inline Explain", description: "Prompt template for inline explain requests.", tokenHints: ["{{context}}"]),
+            AIPromptItem(key: .inlineSimplify, title: "Inline Simplify", description: "Prompt template for inline simplify requests.", tokenHints: ["{{context}}"]),
+            AIPromptItem(key: .inlineAnalogy, title: "Inline Analogy", description: "Prompt template for inline analogy requests.", tokenHints: ["{{context}}"]),
+            AIPromptItem(key: .inlineMistakes, title: "Inline Mistakes", description: "Prompt template for inline mistakes requests.", tokenHints: ["{{context}}"]),
+            AIPromptItem(key: .contextualExplain, title: "Contextual Explain", description: "Prompt template when explaining highlighted text.", tokenHints: ["{{selectedText}}", "{{question}}", "{{correctAnswer}}", "{{officialExplanation}}"]),
+            AIPromptItem(key: .visualGeneration, title: "Visual Prompt Generator", description: "Template used to generate image/video creation prompts.", tokenHints: ["{{mediaType}}", "{{question}}", "{{correctAnswer}}", "{{officialExplanation}}"])
+        ]
+    }
+
+    var modifiedPromptCount: Int {
+        promptItems.filter { promptText(for: $0.key) != (SettingsManager.defaultAIPrompts[$0.key] ?? "") }.count
     }
 
     var hasApiKey: Bool {
@@ -96,6 +128,7 @@ final class SettingsViewModel {
         self.confirmBeforeSending = settingsManager.confirmBeforeSending
         self.appearanceMode = settingsManager.appearanceMode
         self.systemPrompt = settingsManager.systemPrompt
+        self.aiPrompts = Dictionary(uniqueKeysWithValues: SettingsManager.AIPromptKey.allCases.map { ($0, settingsManager.prompt(for: $0)) })
         self.activeLeg = settingsManager.activeLeg
         self.examDateLeg1 = settingsManager.examDateLeg1
         self.examDateLeg2 = settingsManager.examDateLeg2
@@ -120,6 +153,23 @@ final class SettingsViewModel {
 
     func resetSystemPrompt() {
         systemPrompt = SettingsManager.defaultSystemPrompt
+    }
+
+    func promptText(for key: SettingsManager.AIPromptKey) -> String {
+        aiPrompts[key] ?? SettingsManager.defaultAIPrompts[key] ?? ""
+    }
+
+    func updatePrompt(_ key: SettingsManager.AIPromptKey, text: String) {
+        aiPrompts[key] = text
+        settingsManager.setPrompt(text, for: key)
+        if key == .system {
+            systemPrompt = text
+        }
+    }
+
+    func resetPrompt(_ key: SettingsManager.AIPromptKey) {
+        let defaultText = SettingsManager.defaultAIPrompts[key] ?? ""
+        updatePrompt(key, text: defaultText)
     }
 
     func resetAllKeys() {
