@@ -96,6 +96,22 @@ struct AISettingsView: View {
                 SettingsSectionHeader(icon: "checkmark.shield", title: "Confirmation", color: .purple)
 
                 Toggle("Confirm before sending", isOn: $viewModel.confirmBeforeSending)
+
+                Divider()
+
+                Stepper(value: $viewModel.hintImageCount, in: 1...3) {
+                    HStack {
+                        Text("Hint visual images")
+                        Spacer()
+                        Text("\(viewModel.hintImageCount)")
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Text("Controls how many generated images are requested per hint (when supported).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }

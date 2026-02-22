@@ -6,6 +6,7 @@ final class SettingsManager {
     private enum Keys {
         static let selectedProvider = "selectedProvider"
         static let aiEnabled = "aiEnabled"
+        static let hintImageCount = "hintImageCount"
         static let confirmBeforeSending = "confirmBeforeSending"
         static let showPremiumContent = "showPremiumContent"
         static let activeDatasetId = "activeDatasetId"
@@ -78,7 +79,8 @@ final class SettingsManager {
         .quickActionAnalogy: "Give me a real-world analogy to help me understand this concept.",
         .quickActionMistakes: "What do students commonly get wrong about this? What should I watch out for?",
         .hintRequest: """
-        You are a flight instructor. Give a brief hint to help the student figure out the answer without revealing it directly.
+        You are a flight instructor helping a student solve a PPL theory question.
+        Give a concise hint that guides the student toward the right reasoning without revealing the answer directly.
 
         Question: {{question}}
 
@@ -88,9 +90,17 @@ final class SettingsManager {
         C. {{choiceC}}
         D. {{choiceD}}
 
-        Correct answer: {{correctAnswer}}
+        Correct answer text (never reveal directly): {{correctAnswer}}
+        Question image context: {{questionImageContext}}
+        Visual hint requested: {{visualRequested}}
+        Requested image count: {{imageCount}}
 
-        Provide a helpful hint that guides the student toward the correct answer without stating it explicitly.
+        Requirements:
+        - Text hint: max 3 short sentences.
+        - If visual hint requested is "yes", create up to {{imageCount}} simple educational diagram image(s) when the concept is visual/spatial.
+        - Keep visuals schematic and instructional: clear labels, arrows, short callouts, high contrast, minimal clutter.
+        - Do not reference answer letters (A/B/C/D); refer only to concept wording.
+        - Do not state the correct answer text verbatim.
         """,
         .inlineExplain: "Explain this concept in more detail, focusing on the aviation principles involved.\n\n{{context}}",
         .inlineSimplify: "Simplify this explanation using plain language that a beginner pilot can understand.\n\n{{context}}",
@@ -121,6 +131,17 @@ final class SettingsManager {
     var aiEnabled: Bool {
         get { defaults.bool(forKey: Keys.aiEnabled) }
         set { defaults.set(newValue, forKey: Keys.aiEnabled) }
+    }
+
+    var hintImageCount: Int {
+        get {
+            let stored = defaults.integer(forKey: Keys.hintImageCount)
+            if stored == 0 { return 1 }
+            return max(1, min(3, stored))
+        }
+        set {
+            defaults.set(max(1, min(3, newValue)), forKey: Keys.hintImageCount)
+        }
     }
     
     var confirmBeforeSending: Bool {

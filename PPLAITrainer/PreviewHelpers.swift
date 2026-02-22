@@ -110,6 +110,9 @@ class MockDatabaseManager: DatabaseManaging {
 
 class MockAIService: AIServiceProtocol {
     func sendChat(messages: [ChatMessage]) async throws -> String { "Mock response" }
+    func generateHint(systemPrompt: String, prompt: String, questionImages: [AIInputImage], imageCount: Int) async throws -> AIHintResponse {
+        AIHintResponse(text: "Mock hint response", images: [])
+    }
 }
 
 struct MockQuestionAssetProvider: QuestionAssetProviding {

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct QuizSessionView: View {
     @Environment(\.dismiss) private var dismiss
@@ -7,6 +8,7 @@ struct QuizSessionView: View {
     @State private var showSummary = false
     @State private var reviewWrongAnswersVM: QuizViewModel?
     @State private var autoSubmitTask: Task<Void, Never>?
+    @State private var hintSheetDetent: PresentationDetent = .fraction(0.45)
 
     private var scorePercentage: Int {
         guard viewModel.questionsAnswered > 0 else { return 0 }
@@ -117,14 +119,15 @@ struct QuizSessionView: View {
             }
         }
         .sheet(isPresented: $viewModel.showAIResponseSheet) {
-            QuickAIResponseSheet(
-                title: viewModel.aiResponseSheetTitle,
-                isLoading: viewModel.isLoadingAIResponseSheet,
-                content: viewModel.aiResponseSheetBody
-            )
-            .presentationDetents([.fraction(0.45), .medium])
-            .presentationBackground(.ultraThinMaterial)
-            .presentationDragIndicator(.visible)
+            aiResponseSheetContent
+                .presentationDetents(sheetDetents, selection: $hintSheetDetent)
+                .presentationBackground(.ultraThinMaterial)
+                .presentationDragIndicator(.visible)
+        }
+        .onChange(of: viewModel.showAIResponseSheet) { _, isPresented in
+            if isPresented && viewModel.aiResponseSheetTitle == "Hint" {
+                hintSheetDetent = .fraction(0.45)
+            }
         }
         .navigationDestination(isPresented: Binding(
             get: { reviewWrongAnswersVM != nil },
@@ -222,6 +225,29 @@ struct QuizSessionView: View {
         max(viewModel.questionsAnswered - viewModel.correctCount, 0)
     }
 
+    @ViewBuilder
+    private var aiResponseSheetContent: some View {
+        if viewModel.aiResponseSheetTitle == "Hint",
+           let payload = viewModel.aiHintPayload {
+            HintResponseSheet(
+                payload: payload,
+                detentSelection: $hintSheetDetent
+            ) {
+                viewModel.regenerateHint()
+            }
+        } else {
+            QuickAIResponseSheet(
+                title: viewModel.aiResponseSheetTitle,
+                isLoading: viewModel.isLoadingAIResponseSheet,
+                content: viewModel.aiResponseSheetBody
+            )
+        }
+    }
+
+    private var sheetDetents: Set<PresentationDetent> {
+        [.fraction(0.45), .medium, .large]
+    }
+
     private var selectedExplainBinding: Binding<String?> {
         Binding(
             get: { viewModel.selectedExplainText },
@@ -240,6 +266,7 @@ struct QuizSessionView: View {
                         compactActionLabel("Hint", systemImage: "lightbulb", color: .orange)
                     }
                     .buttonStyle(.plain)
+                    .disabled(viewModel.isLoadingHint)
                     .accessibilityLabel("Get hint")
                     .accessibilityHint("Get guidance without revealing the answer")
 
@@ -253,6 +280,17 @@ struct QuizSessionView: View {
                         .accessibilityLabel("Explain selected text")
                         .accessibilityHint("Ask AI to explain the selected aviation term in context")
                     }
+                }
+                .padding(.horizontal)
+            }
+
+            if viewModel.isLoadingHint {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Building hint and visual…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal)
             }
@@ -368,5 +406,55 @@ private struct QuickAIResponseSheet: View {
             }
         }
         .padding()
+    }
+}
+
+private struct HintResponseSheet: View {
+    let payload: AIHintPayload
+    @Binding var detentSelection: PresentationDetent
+    let onRegenerate: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Label("Hint", systemImage: "lightbulb")
+                    .font(.headline)
+                Spacer()
+                Button {
+                    detentSelection = isExpanded ? .fraction(0.45) : .large
+                } label: {
+                    Image(systemName: isExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .accessibilityLabel(isExpanded ? "Minimize hint" : "Maximize hint")
+                Button("Regenerate") {
+                    onRegenerate()
+                }
+                .font(.subheadline.weight(.semibold))
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    AIMarkdownMathView(content: payload.text)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if !payload.images.isEmpty {
+                        Divider()
+                        Text("Visual Hint")
+                            .font(.subheadline.weight(.semibold))
+                        ForEach(payload.images) { image in
+                            if let uiImage = UIImage(contentsOfFile: image.path) {
+                                ZoomableImageView(uiImage: uiImage)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding()
+    }
+
+    private var isExpanded: Bool {
+        detentSelection == .large
     }
 }

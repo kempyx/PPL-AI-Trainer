@@ -45,6 +45,10 @@ final class SettingsViewModel {
         didSet { settingsManager.aiEnabled = aiEnabled }
     }
 
+    var hintImageCount: Int {
+        didSet { settingsManager.hintImageCount = max(1, min(3, hintImageCount)) }
+    }
+
     var confirmBeforeSending: Bool {
         didSet { settingsManager.confirmBeforeSending = confirmBeforeSending }
     }
@@ -98,7 +102,7 @@ final class SettingsViewModel {
             AIPromptItem(key: .quickActionSimplify, title: "Quick Action: Simplify", description: "User message used by the one-tap Simplify action.", tokenHints: []),
             AIPromptItem(key: .quickActionAnalogy, title: "Quick Action: Analogy", description: "User message used by the one-tap Analogy action.", tokenHints: []),
             AIPromptItem(key: .quickActionMistakes, title: "Quick Action: Mistakes", description: "User message used by the one-tap Mistakes action.", tokenHints: []),
-            AIPromptItem(key: .hintRequest, title: "Question Hint", description: "Prompt template for generating hints.", tokenHints: ["{{question}}", "{{choiceA}}", "{{choiceB}}", "{{choiceC}}", "{{choiceD}}", "{{correctAnswer}}"]),
+            AIPromptItem(key: .hintRequest, title: "Question Hint", description: "Prompt template for generating hints.", tokenHints: ["{{question}}", "{{choiceA}}", "{{choiceB}}", "{{choiceC}}", "{{choiceD}}", "{{correctAnswer}}", "{{questionImageContext}}", "{{visualRequested}}", "{{imageCount}}"]),
             AIPromptItem(key: .inlineExplain, title: "Inline Explain", description: "Prompt template for inline explain requests.", tokenHints: ["{{context}}"]),
             AIPromptItem(key: .inlineSimplify, title: "Inline Simplify", description: "Prompt template for inline simplify requests.", tokenHints: ["{{context}}"]),
             AIPromptItem(key: .inlineAnalogy, title: "Inline Analogy", description: "Prompt template for inline analogy requests.", tokenHints: ["{{context}}"]),
@@ -158,6 +162,7 @@ final class SettingsViewModel {
         self.selectedProvider = provider
         self.selectedModel = provider.resolveModelId(settingsManager.selectedModel)
         self.aiEnabled = settingsManager.aiEnabled
+        self.hintImageCount = settingsManager.hintImageCount
         self.confirmBeforeSending = settingsManager.confirmBeforeSending
         self.showPremiumContent = settingsManager.showPremiumContent
         self.appearanceMode = settingsManager.appearanceMode
