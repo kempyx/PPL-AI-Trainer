@@ -344,7 +344,83 @@ private enum AIMathMarkdownNormalizer {
             wrapWithDisplayMath: false
         )
 
+        output = repairUnbalancedBracesInDollarMath(in: output)
+
         return output
+    }
+
+    private static func repairUnbalancedBracesInDollarMath(in source: String) -> String {
+        var output = source
+        output = replaceDelimitedMathBody(in: output, delimiter: "$$")
+        output = replaceDelimitedMathBody(in: output, delimiter: "$")
+        return output
+    }
+
+    private static func replaceDelimitedMathBody(in source: String, delimiter: String) -> String {
+        var output = source
+        var searchStart = output.startIndex
+
+        while searchStart < output.endIndex,
+              let openRange = output.range(of: delimiter, range: searchStart..<output.endIndex) {
+            let bodyStart = openRange.upperBound
+            guard let closeRange = output.range(of: delimiter, range: bodyStart..<output.endIndex) else {
+                break
+            }
+
+            let body = String(output[bodyStart..<closeRange.lowerBound])
+            let repairedBody = repairedBraceBalance(in: body)
+
+            if repairedBody != body {
+                output.replaceSubrange(bodyStart..<closeRange.lowerBound, with: repairedBody)
+                let advancedOffset = repairedBody.distance(from: repairedBody.startIndex, to: repairedBody.endIndex)
+                searchStart = output.index(bodyStart, offsetBy: advancedOffset)
+            } else {
+                searchStart = closeRange.upperBound
+            }
+        }
+
+        return output
+    }
+
+    private static func repairedBraceBalance(in body: String) -> String {
+        var result = ""
+        result.reserveCapacity(body.count)
+
+        var openBraceCount = 0
+        var isEscaped = false
+
+        for character in body {
+            defer { isEscaped = false }
+
+            if character == "\\" {
+                result.append(character)
+                isEscaped = true
+                continue
+            }
+
+            guard !isEscaped else {
+                result.append(character)
+                continue
+            }
+
+            if character == "{" {
+                openBraceCount += 1
+                result.append(character)
+            } else if character == "}" {
+                if openBraceCount > 0 {
+                    openBraceCount -= 1
+                    result.append(character)
+                }
+            } else {
+                result.append(character)
+            }
+        }
+
+        if openBraceCount > 0 {
+            result.append(String(repeating: "}", count: openBraceCount))
+        }
+
+        return result
     }
 
     private static func replaceDelimitedMath(
