@@ -1,5 +1,8 @@
 import Foundation
 import Observation
+import os
+
+private let logger = Logger(subsystem: "com.primendro.PPLAITrainer", category: "Bootstrap")
 
 @MainActor
 @Observable
@@ -24,6 +27,9 @@ final class AppBootstrapper {
     private let networkMonitor: NetworkMonitor
     private let datasetCatalog: DatasetCatalogManaging
     private let activeDatasetStore: ActiveDatasetStoring
+    private let datasets: [DatasetDescriptor]
+    private let datasetsById: [String: DatasetDescriptor]
+    private let defaultDataset: DatasetDescriptor
 
     private static let legacyDatabaseFilename = "153-en.sqlite"
     private static let legacyDatabaseResourceName = "153-en"
@@ -54,6 +60,9 @@ final class AppBootstrapper {
         } else {
             self.datasetCatalog = try BundledDatasetCatalog()
         }
+        self.datasets = self.datasetCatalog.datasets
+        self.datasetsById = Dictionary(uniqueKeysWithValues: self.datasetCatalog.datasets.map { ($0.id, $0) })
+        self.defaultDataset = self.datasetCatalog.defaultDataset
 
         if let activeDatasetStore {
             self.activeDatasetStore = activeDatasetStore
@@ -68,14 +77,18 @@ final class AppBootstrapper {
     }
 
     func switchDataset(to datasetId: String) async throws {
-        guard let dataset = datasetCatalog.dataset(id: datasetId) else {
-            throw NSError(domain: "AppBootstrapper", code: 1, userInfo: [NSLocalizedDescriptionKey: "Dataset not found: \(datasetId)"])
+        let requestedId = String(datasetId)
+
+        guard let dataset = datasetsById[requestedId] else {
+            logger.error("Dataset switch rejected. Unknown dataset id: \(requestedId, privacy: .public)")
+            throw NSError(domain: "AppBootstrapper", code: 1, userInfo: [NSLocalizedDescriptionKey: "Dataset not found: \(requestedId)"])
         }
 
         guard !isLoading else {
             throw NSError(domain: "AppBootstrapper", code: 2, userInfo: [NSLocalizedDescriptionKey: "Dataset switch already in progress"])
         }
 
+        logger.info("Switching dataset to \(requestedId, privacy: .public)")
         let profileId = activeDatasetStore.activeProfileId(for: dataset.id)
 
         isLoading = true
@@ -85,6 +98,7 @@ final class AppBootstrapper {
         do {
             rebuiltDeps = try buildDependencies(dataset: dataset, profileId: profileId)
         } catch {
+            logger.error("Dataset switch build failed for \(requestedId, privacy: .public): \(error.localizedDescription, privacy: .public)")
             throw NSError(domain: "AppBootstrapper", code: 3, userInfo: [NSLocalizedDescriptionKey: error.localizedDescription])
         }
 
@@ -92,10 +106,11 @@ final class AppBootstrapper {
         self.deps = rebuiltDeps
         self.initError = nil
         self.rootResetToken = UUID()
+        logger.info("Dataset switch committed for \(requestedId, privacy: .public)")
     }
 
     var availableDatasets: [DatasetDescriptor] {
-        datasetCatalog.datasets
+        datasets
     }
 
     private func rebuildDependencies(resetRoot: Bool) async {
@@ -118,6 +133,7 @@ final class AppBootstrapper {
                 self.rootResetToken = UUID()
             }
         } catch {
+            logger.error("Bootstrap dependency rebuild failed: \(error.localizedDescription, privacy: .public)")
             if let previousDeps {
                 self.deps = previousDeps
                 self.initError = nil
@@ -158,7 +174,7 @@ final class AppBootstrapper {
             notificationService: notificationService,
             activeDataset: dataset,
             activeProfileId: profileId,
-            availableDatasets: datasetCatalog.datasets,
+            availableDatasets: datasets,
             questionAssetProvider: assetProvider,
             switchDataset: { [weak self] datasetId in
                 guard let self else { return }
@@ -169,20 +185,20 @@ final class AppBootstrapper {
 
     private func resolveBootstrapDataset() -> DatasetDescriptor {
         if let storedId = settingsManager.activeDatasetId,
-           let storedDataset = datasetCatalog.dataset(id: storedId) {
+           let storedDataset = datasetsById[storedId] {
             return storedDataset
         }
 
         if settingsManager.activeDatasetId == nil,
            hasLegacyDatabaseInDocuments(),
-           let legacyDataset = datasetCatalog.datasets.first(where: {
+           let legacyDataset = datasets.first(where: {
                $0.databaseResourceName == Self.legacyDatabaseResourceName &&
                $0.databaseExtension == Self.legacyDatabaseExtension
            }) {
             return legacyDataset
         }
 
-        return datasetCatalog.defaultDataset
+        return defaultDataset
     }
 
     private func hasLegacyDatabaseInDocuments(fileManager: FileManager = .default) -> Bool {
