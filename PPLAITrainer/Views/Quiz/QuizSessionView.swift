@@ -105,7 +105,12 @@ struct QuizSessionView: View {
                     if viewModel.currentQuestion != nil, viewModel.currentIndex > 0 {
                         viewModel.previousQuestion()
                     } else {
-                        viewModel.saveSessionState(categoryId: nil, categoryName: nil)
+                        let isCompletedSession = viewModel.currentQuestion == nil && viewModel.currentIndex >= viewModel.questions.count
+                        if isCompletedSession {
+                            viewModel.clearSavedSession()
+                        } else {
+                            viewModel.saveSessionState(categoryId: nil, categoryName: nil)
+                        }
                         dismiss()
                     }
                 } label: {
