@@ -68,6 +68,7 @@ final class SettingsManager {
         case inlineAnalogy
         case inlineMistakes
         case contextualExplain
+        case choiceExplain
         case visualGeneration
 
         var id: String { rawValue }
@@ -133,6 +134,22 @@ final class SettingsManager {
         Question: {{question}}
         Correct answer: {{correctAnswer}}
         {{officialExplanation}}
+        """,
+        .choiceExplain: """
+        You are helping a student understand one selected answer choice before they submit.
+
+        Selected choice text: "{{selectedText}}"
+        Question: {{question}}
+        Correct answer (for instructor grounding only, never reveal): {{correctAnswer}}
+        {{officialExplanation}}
+
+        Requirements:
+        - Explain what this selected choice means in plain aviation terms.
+        - Explain when this idea applies and when it does not.
+        - Keep it concise and exam-focused (max 4 short sentences).
+        - Do NOT reveal, quote, or imply which answer choice is correct.
+        - Do NOT say whether this selected choice is right or wrong.
+        - Do NOT reference answer letters or option order.
         """,
         .visualGeneration: """
         Create a clear, high-contrast, non-photorealistic instructional aviation diagram for student pilots that teaches this concept: {{question}}. Use a clean schematic layout with minimal clutter, clear labels, directional arrows, and short callouts; make the correct answer explicit in the visual: {{correctAnswer}}; represent this official explanation visually: {{officialExplanation}}; and include essential aviation domain knowledge needed for technical accuracy and exam understanding.

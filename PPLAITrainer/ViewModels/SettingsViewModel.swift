@@ -109,6 +109,7 @@ final class SettingsViewModel {
             AIPromptItem(key: .inlineAnalogy, title: "Inline Analogy", description: "Prompt template for inline analogy requests.", tokenHints: ["{{context}}"]),
             AIPromptItem(key: .inlineMistakes, title: "Inline Mistakes", description: "Prompt template for inline mistakes requests.", tokenHints: ["{{context}}"]),
             AIPromptItem(key: .contextualExplain, title: "Contextual Explain", description: "Prompt template when explaining highlighted text.", tokenHints: ["{{selectedText}}", "{{question}}", "{{correctAnswer}}", "{{officialExplanation}}"]),
+            AIPromptItem(key: .choiceExplain, title: "Choice Explain (Long Press)", description: "Prompt template when explaining a long-pressed answer choice before submission.", tokenHints: ["{{selectedText}}", "{{question}}", "{{correctAnswer}}", "{{officialExplanation}}"]),
             AIPromptItem(key: .visualGeneration, title: "Visual Prompt Generator", description: "Template used to generate copy-paste prompts for educational diagram images.", tokenHints: ["{{question}}", "{{correctAnswer}}", "{{officialExplanation}}"])
         ]
     }

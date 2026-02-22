@@ -5,6 +5,7 @@ struct QuestionView: View {
     let question: PresentedQuestion
     @Binding var selectedAnswer: Int?
     @Binding var selectedExplainText: String?
+    let onExplainChoice: ((String) -> Void)?
     @State private var hasOpenedReferenceFigure = false
 
     var body: some View {
@@ -108,6 +109,17 @@ struct QuestionView: View {
                             .cornerRadius(AppCornerRadius.small)
                         }
                         .buttonStyle(.plain)
+                        .contextMenu {
+                            if let onExplainChoice {
+                                Button {
+                                    let choiceText = question.shuffledAnswers[index]
+                                    selectedExplainText = choiceText
+                                    onExplainChoice(choiceText)
+                                } label: {
+                                    Label("Explain this choice", systemImage: "text.bubble")
+                                }
+                            }
+                        }
                         .accessibilityHint("Select option \(["A", "B", "C", "D"][index])")
                     }
                 }
@@ -202,6 +214,7 @@ struct QuestionView: View {
     QuestionView(
         question: presented,
         selectedAnswer: .constant(nil),
-        selectedExplainText: .constant(nil)
+        selectedExplainText: .constant(nil),
+        onExplainChoice: nil
     )
 }

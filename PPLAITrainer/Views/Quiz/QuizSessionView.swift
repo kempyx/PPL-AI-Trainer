@@ -69,7 +69,12 @@ struct QuizSessionView: View {
                         QuestionView(
                             question: current,
                             selectedAnswer: $viewModel.selectedAnswer,
-                            selectedExplainText: selectedExplainBinding
+                            selectedExplainText: selectedExplainBinding,
+                            onExplainChoice: isAIAvailable && !viewModel.hasSubmitted
+                                ? { choiceText in
+                                    viewModel.explainAnswerChoice(choiceText)
+                                }
+                                : nil
                         )
                             .id("question-\(viewModel.currentIndex)")
                     } else {

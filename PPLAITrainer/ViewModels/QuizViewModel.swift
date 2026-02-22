@@ -599,6 +599,51 @@ final class QuizViewModel {
 
     // MARK: - Contextual Explain
 
+    func explainAnswerChoice(_ choiceText: String) {
+        guard settingsManager.aiEnabled,
+              let current = currentQuestion else { return }
+
+        let normalizedChoice = choiceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedChoice.isEmpty else { return }
+
+        selectedExplainText = normalizedChoice
+        showAIResponseSheet = true
+        aiResponseSheetTitle = "Explain Choice"
+        aiResponseSheetBody = nil
+        isLoadingAIResponseSheet = true
+
+        logInteractionEvent(
+            name: "quiz_choice_explain_requested",
+            questionId: current.question.id,
+            metadata: "choice=\(normalizedChoice.prefix(60));submitted=\(hasSubmitted)"
+        )
+
+        Task { @MainActor in
+            do {
+                let prompt = settingsManager.renderPrompt(.choiceExplain, values: [
+                    "selectedText": normalizedChoice,
+                    "question": current.question.text,
+                    "correctAnswer": current.shuffledAnswers[current.correctAnswerIndex],
+                    "officialExplanation": current.question.explanation.map { "Official explanation: \($0)" } ?? ""
+                ])
+
+                let messages = [
+                    ChatMessage(role: .system, content: settingsManager.systemPrompt),
+                    ChatMessage(role: .user, content: prompt)
+                ]
+
+                let response = try await aiService.sendChat(messages: messages)
+                aiResponseSheetBody = response
+                isLoadingAIResponseSheet = false
+                logInteractionEvent(name: "quiz_choice_explain_generated", questionId: current.question.id, metadata: "choice=\(normalizedChoice.prefix(60))")
+            } catch {
+                aiResponseSheetBody = "Unable to explain this choice right now. Please try again."
+                isLoadingAIResponseSheet = false
+                logInteractionEvent(name: "quiz_choice_explain_failed", questionId: current.question.id, metadata: "choice=\(normalizedChoice.prefix(60))")
+            }
+        }
+    }
+
     func updateSelectedExplainText(_ text: String?) {
         let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines)
         selectedExplainText = (trimmed?.isEmpty == false) ? trimmed : nil

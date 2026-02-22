@@ -330,6 +330,57 @@ private enum AIMathMarkdownNormalizer {
             bodyCaptureIndex: 2
         )
 
+        output = replaceDelimitedMath(
+            in: output,
+            openDelimiter: "\\\\[",
+            closeDelimiter: "\\\\]",
+            wrapWithDisplayMath: true
+        )
+
+        output = replaceDelimitedMath(
+            in: output,
+            openDelimiter: "\\\\(",
+            closeDelimiter: "\\\\)",
+            wrapWithDisplayMath: false
+        )
+
+        return output
+    }
+
+    private static func replaceDelimitedMath(
+        in source: String,
+        openDelimiter: String,
+        closeDelimiter: String,
+        wrapWithDisplayMath: Bool
+    ) -> String {
+        let pattern = "\(openDelimiter)([\\s\\S]*?)\(closeDelimiter)"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return source
+        }
+
+        let sourceNSString = source as NSString
+        let fullRange = NSRange(location: 0, length: sourceNSString.length)
+        let matches = regex.matches(in: source, range: fullRange).reversed()
+        var output = source
+
+        for match in matches {
+            guard match.numberOfRanges > 1 else { continue }
+            let body = sourceNSString.substring(with: match.range(at: 1))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            guard let replaceRange = Range(match.range(at: 0), in: output) else { continue }
+
+            let replacement: String
+            if body.isEmpty {
+                replacement = ""
+            } else if wrapWithDisplayMath {
+                replacement = "\n$$\n\(body)\n$$\n"
+            } else {
+                replacement = "$\(body)$"
+            }
+            output.replaceSubrange(replaceRange, with: replacement)
+        }
+
         return output
     }
 
