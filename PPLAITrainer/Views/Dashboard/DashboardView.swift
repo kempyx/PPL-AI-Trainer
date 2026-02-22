@@ -13,7 +13,7 @@ struct DashboardView: View {
 
     var body: some View {
         NavigationStack {
-            if let stats = viewModel.studyStats, stats.answeredAllTime < 10 {
+            if let stats = viewModel.studyStats, stats.answeredAllTime == 0 {
                 FirstTimeDashboardView()
             } else {
                 dashboardContent
