@@ -13,6 +13,7 @@ final class QuizViewModel {
     let gamificationService: GamificationService
     private let hapticService: HapticService
     private let soundService: SoundService
+    private let questionAssetProvider: QuestionAssetProviding
     
     var questions: [PresentedQuestion] = []
     var currentIndex: Int = 0
@@ -82,7 +83,16 @@ final class QuizViewModel {
         questions.count - currentIndex
     }
     
-    init(databaseManager: DatabaseManaging, srsEngine: SRSEngine, aiService: AIServiceProtocol, settingsManager: SettingsManager, gamificationService: GamificationService, hapticService: HapticService, soundService: SoundService) {
+    init(
+        databaseManager: DatabaseManaging,
+        srsEngine: SRSEngine,
+        aiService: AIServiceProtocol,
+        settingsManager: SettingsManager,
+        gamificationService: GamificationService,
+        hapticService: HapticService,
+        soundService: SoundService,
+        questionAssetProvider: QuestionAssetProviding
+    ) {
         self.databaseManager = databaseManager
         self.srsEngine = srsEngine
         self.aiService = aiService
@@ -90,6 +100,7 @@ final class QuizViewModel {
         self.gamificationService = gamificationService
         self.hapticService = hapticService
         self.soundService = soundService
+        self.questionAssetProvider = questionAssetProvider
         self.aiConversation = AIConversationViewModel(
             aiService: aiService,
             settingsManager: settingsManager,
@@ -325,24 +336,8 @@ final class QuizViewModel {
         return false
     }
 
-    private func mimeType(for filename: String) -> String {
-        switch (filename as NSString).pathExtension.lowercased() {
-        case "png": return "image/png"
-        case "jpg", "jpeg": return "image/jpeg"
-        case "webp": return "image/webp"
-        default: return "application/octet-stream"
-        }
-    }
-
     private func base64DataURL(for filename: String) -> String? {
-        let nsFilename = filename as NSString
-        let name = nsFilename.deletingPathExtension
-        let ext = nsFilename.pathExtension
-        guard let path = Bundle.main.path(forResource: name, ofType: ext),
-              let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
-            return nil
-        }
-        return "data:\(mimeType(for: filename));base64,\(data.base64EncodedString())"
+        questionAssetProvider.imageDataURL(filename: filename)
     }
     
     // MARK: - AI Hint

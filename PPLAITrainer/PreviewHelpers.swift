@@ -1,6 +1,20 @@
 import SwiftUI
+import UIKit
 
 extension Dependencies {
+    private static let previewDataset = DatasetDescriptor(
+        id: "preview.en.v153",
+        familyId: "preview",
+        languageCode: "en",
+        version: "153",
+        displayName: "Preview",
+        databaseResourceName: "153-en",
+        databaseExtension: "sqlite",
+        imagesDirectory: "QuestionImages",
+        categoryIconsDirectory: "QuestionImages",
+        examMapping: .defaultValue
+    )
+
     static let preview = Dependencies(
         databaseManager: MockDatabaseManager(),
         srsEngine: SRSEngine(),
@@ -12,7 +26,12 @@ extension Dependencies {
         gamificationService: GamificationService(databaseManager: MockDatabaseManager(), settingsManager: SettingsManager()),
         hapticService: HapticService(settingsManager: SettingsManager()),
         soundService: SoundService(settingsManager: SettingsManager()),
-        notificationService: NotificationService(settingsManager: SettingsManager())
+        notificationService: NotificationService(settingsManager: SettingsManager()),
+        activeDataset: previewDataset,
+        activeProfileId: previewDataset.id,
+        availableDatasets: [previewDataset],
+        questionAssetProvider: MockQuestionAssetProvider(),
+        switchDataset: { _ in }
     )
 }
 
@@ -91,4 +110,10 @@ class MockDatabaseManager: DatabaseManaging {
 
 class MockAIService: AIServiceProtocol {
     func sendChat(messages: [ChatMessage]) async throws -> String { "Mock response" }
+}
+
+struct MockQuestionAssetProvider: QuestionAssetProviding {
+    func uiImage(filename: String) -> UIImage? { nil }
+    func imageDataURL(filename: String) -> String? { nil }
+    func categoryIcon(categoryId: Int64) -> UIImage? { nil }
 }

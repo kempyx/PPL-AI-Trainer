@@ -1,0 +1,61 @@
+{
+  "defaultDatasetId": "easa.sv-en.v153",
+  "datasets": [
+    {
+      "id": "easa.en.v153",
+      "familyId": "easa",
+      "languageCode": "en",
+      "version": "153",
+      "displayName": "English (v153)",
+      "databaseResourceName": "153-en",
+      "databaseExtension": "sqlite",
+      "imagesDirectory": "QuestionImages",
+      "categoryIconsDirectory": "QuestionImages",
+      "examMapping": {
+        "technicalLegal": [
+          { "name": "Aircraft General Knowledge", "categoryCodes": ["21", "22"], "questionCount": 20, "timeMinutes": 35 },
+          { "name": "Principles of Flight", "categoryCodes": ["81"], "questionCount": 20, "timeMinutes": 45 },
+          { "name": "Air Law", "categoryCodes": ["10"], "questionCount": 20, "timeMinutes": 45 }
+        ],
+        "humanEnvironment": [
+          { "name": "Meteorology", "categoryCodes": ["50"], "questionCount": 20, "timeMinutes": 45 },
+          { "name": "Human Performance", "categoryCodes": ["40"], "questionCount": 20, "timeMinutes": 30 },
+          { "name": "Communications", "categoryCodes": ["91"], "questionCount": 20, "timeMinutes": 30 }
+        ],
+        "planningNavigation": [
+          { "name": "Navigation", "categoryCodes": ["61", "62"], "questionCount": 20, "timeMinutes": 65 },
+          { "name": "Flight Performance & Planning", "categoryCodes": ["31", "32", "33"], "questionCount": 20, "timeMinutes": 95 },
+          { "name": "Operational Procedures", "categoryCodes": ["70"], "questionCount": 20, "timeMinutes": 30 }
+        ]
+      }
+    },
+    {
+      "id": "easa.sv-en.v153",
+      "familyId": "easa",
+      "languageCode": "sv-en",
+      "version": "153",
+      "displayName": "SV/EN (v153)",
+      "databaseResourceName": "153-sv-en",
+      "databaseExtension": "sqlite",
+      "imagesDirectory": "QuestionImages-sv-en",
+      "categoryIconsDirectory": "QuestionImages",
+      "examMapping": {
+        "technicalLegal": [
+          { "name": "Aircraft General Knowledge", "categoryCodes": ["21", "22"], "questionCount": 20, "timeMinutes": 35 },
+          { "name": "Principles of Flight", "categoryCodes": ["81"], "questionCount": 20, "timeMinutes": 45 },
+          { "name": "Air Law", "categoryCodes": ["10"], "questionCount": 20, "timeMinutes": 45 }
+        ],
+        "humanEnvironment": [
+          { "name": "Meteorology", "categoryCodes": ["50"], "questionCount": 20, "timeMinutes": 45 },
+          { "name": "Human Performance", "categoryCodes": ["40"], "questionCount": 20, "timeMinutes": 30 },
+          { "name": "Communications", "categoryCodes": ["91"], "questionCount": 20, "timeMinutes": 30 }
+        ],
+        "planningNavigation": [
+          { "name": "Navigation", "categoryCodes": ["61", "62"], "questionCount": 20, "timeMinutes": 65 },
+          { "name": "Flight Performance & Planning", "categoryCodes": ["31", "32", "33"], "questionCount": 20, "timeMinutes": 95 },
+          { "name": "Operational Procedures", "categoryCodes": ["70"], "questionCount": 20, "timeMinutes": 30 }
+        ]
+      }
+    }
+  ]
+}

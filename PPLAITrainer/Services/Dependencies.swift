@@ -12,6 +12,11 @@ struct Dependencies {
     let hapticService: HapticService
     let soundService: SoundService
     let notificationService: NotificationService
+    let activeDataset: DatasetDescriptor
+    let activeProfileId: String
+    let availableDatasets: [DatasetDescriptor]
+    let questionAssetProvider: QuestionAssetProviding
+    let switchDataset: @Sendable (String) async throws -> Void
     
 
     var quizCoordinator: QuizCoordinator {
@@ -26,7 +31,8 @@ struct Dependencies {
             settingsManager: settingsManager,
             gamificationService: gamificationService,
             hapticService: hapticService,
-            soundService: soundService
+            soundService: soundService,
+            questionAssetProvider: questionAssetProvider
         )
     }
 

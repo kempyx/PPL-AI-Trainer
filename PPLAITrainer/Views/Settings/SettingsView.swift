@@ -10,6 +10,8 @@ struct SettingsView: View {
     @State private var kpiSnapshot: KPISnapshot?
     @State private var kpiMarkdownReport: String = ""
     @State private var showKPIReportSheet = false
+    @State private var showDatasetSwitchConfirmation = false
+    @State private var pendingDatasetSwitchId: String?
 
     private struct KPISnapshot {
         let windowDays: Int
@@ -35,6 +37,7 @@ struct SettingsView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     examScheduleCard
+                    datasetCard
                     studyPreferencesCard
                     appearanceCard
                     feedbackCard
@@ -81,6 +84,27 @@ struct SettingsView: View {
                 if let suggested = viewModel.suggestedLeg {
                     Text("\(suggested.emoji) \(suggested.title) exam is coming up soon. Switch to focus on it?")
                 }
+            }
+            .alert("Switch Dataset?", isPresented: $showDatasetSwitchConfirmation) {
+                Button("Cancel", role: .cancel) {
+                    pendingDatasetSwitchId = nil
+                }
+                Button("Switch", role: .destructive) {
+                    Task {
+                        await performDatasetSwitch()
+                    }
+                }
+            } message: {
+                let datasetName = pendingDatasetSwitchId.flatMap { viewModel.datasetDescriptor(for: $0)?.displayName } ?? "selected dataset"
+                Text("Switch to \(datasetName)? The app will reload and use a separate progress profile.")
+            }
+            .alert("Dataset Switch Failed", isPresented: Binding(
+                get: { viewModel.datasetSwitchErrorMessage != nil },
+                set: { if !$0 { viewModel.clearDatasetSwitchError() } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(viewModel.datasetSwitchErrorMessage ?? "Unknown error")
             }
             .sheet(isPresented: $showKPIReportSheet) {
                 NavigationStack {
@@ -222,6 +246,68 @@ struct SettingsView: View {
 
     // MARK: - Appearance
 
+    private var datasetCard: some View {
+        SettingsCard {
+            VStack(alignment: .leading, spacing: 12) {
+                SettingsSectionHeader(icon: "square.stack.3d.up.fill", title: "Dataset", color: .mint)
+
+                HStack {
+                    Text("Current")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(viewModel.activeDatasetDisplayName)
+                        .font(.subheadline.weight(.semibold))
+                }
+
+                HStack {
+                    Text("Profile")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(viewModel.activeProfileId)
+                        .font(.caption.monospaced())
+                }
+
+                if viewModel.availableDatasets.count > 1 {
+                    Divider()
+                    ForEach(viewModel.availableDatasets) { dataset in
+                        Button {
+                            requestDatasetSwitch(to: dataset.id)
+                        } label: {
+                            HStack {
+                                Text(dataset.displayName)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                if dataset.id == viewModel.activeDatasetId {
+                                    Label("Active", systemImage: "checkmark.circle.fill")
+                                        .font(.caption)
+                                        .labelStyle(.titleAndIcon)
+                                        .foregroundStyle(.green)
+                                } else {
+                                    Image(systemName: "arrow.left.arrow.right")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(viewModel.isSwitchingDataset || dataset.id == viewModel.activeDatasetId)
+                    }
+                }
+
+                if viewModel.isSwitchingDataset {
+                    ProgressView("Switching dataset…")
+                        .font(.caption)
+                }
+
+                Text("Progress, SRS, and gamification are isolated per dataset profile.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     private var examScheduleCard: some View {
         SettingsCard {
             VStack(alignment: .leading, spacing: 16) {
@@ -283,6 +369,18 @@ struct SettingsView: View {
         if let suggested = viewModel.suggestedLeg, suggested != dismissedSuggestion {
             showLegSuggestion = true
         }
+    }
+
+    private func requestDatasetSwitch(to datasetId: String) {
+        pendingDatasetSwitchId = datasetId
+        showDatasetSwitchConfirmation = true
+    }
+
+    @MainActor
+    private func performDatasetSwitch() async {
+        guard let datasetId = pendingDatasetSwitchId else { return }
+        pendingDatasetSwitchId = nil
+        await viewModel.switchDatasetIfNeeded(to: datasetId)
     }
 
     // MARK: - Study Preferences

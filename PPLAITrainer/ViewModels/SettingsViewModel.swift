@@ -13,7 +13,9 @@ final class SettingsViewModel {
     }
 
     private let keychainStore: KeychainStore
+    private let switchDatasetAction: (@Sendable (String) async throws -> Void)?
     private(set) var settingsManager: SettingsManager
+    let availableDatasets: [DatasetDescriptor]
 
     // Stored properties so @Observable can track them for SwiftUI updates
     var selectedProvider: AIProviderType {
@@ -64,6 +66,14 @@ final class SettingsViewModel {
     var activeLeg: ExamLeg {
         didSet { settingsManager.activeLeg = activeLeg }
     }
+
+    var activeDatasetId: String
+
+    var activeProfileId: String
+
+    var isSwitchingDataset = false
+
+    var datasetSwitchErrorMessage: String?
     
     var examDateLeg1: Date? {
         didSet { settingsManager.examDateLeg1 = examDateLeg1 }
@@ -105,6 +115,10 @@ final class SettingsViewModel {
     var hasApiKey: Bool {
         !currentApiKey.isEmpty
     }
+
+    var activeDatasetDisplayName: String {
+        datasetDescriptor(for: activeDatasetId)?.displayName ?? activeDatasetId
+    }
     
     var suggestedLeg: ExamLeg? {
         let dates: [(ExamLeg, Date)] = [
@@ -120,11 +134,26 @@ final class SettingsViewModel {
         return nearest.0 != activeLeg ? nearest.0 : nil
     }
 
-    init(keychainStore: KeychainStore, settingsManager: SettingsManager) {
+    init(
+        keychainStore: KeychainStore,
+        settingsManager: SettingsManager,
+        availableDatasets: [DatasetDescriptor] = [],
+        activeDatasetId: String? = nil,
+        activeProfileId: String? = nil,
+        switchDataset: (@Sendable (String) async throws -> Void)? = nil
+    ) {
         self.keychainStore = keychainStore
         self.settingsManager = settingsManager
+        self.availableDatasets = availableDatasets
+        self.switchDatasetAction = switchDataset
 
         // Initialize stored properties from SettingsManager
+        let resolvedDatasetId = activeDatasetId
+            ?? settingsManager.activeDatasetId
+            ?? availableDatasets.first?.id
+            ?? "easa.en.v153"
+        self.activeDatasetId = resolvedDatasetId
+        self.activeProfileId = activeProfileId ?? settingsManager.profileId(for: resolvedDatasetId)
         let provider = AIProviderType(rawValue: settingsManager.selectedProvider) ?? .openai
         self.selectedProvider = provider
         self.selectedModel = provider.resolveModelId(settingsManager.selectedModel)
@@ -138,6 +167,7 @@ final class SettingsViewModel {
         self.examDateLeg1 = settingsManager.examDateLeg1
         self.examDateLeg2 = settingsManager.examDateLeg2
         self.examDateLeg3 = settingsManager.examDateLeg3
+        self.datasetSwitchErrorMessage = nil
 
         loadCurrentKey()
     }
@@ -186,5 +216,31 @@ final class SettingsViewModel {
         if let suggested = suggestedLeg {
             activeLeg = suggested
         }
+    }
+
+    func datasetDescriptor(for id: String) -> DatasetDescriptor? {
+        availableDatasets.first(where: { $0.id == id })
+    }
+
+    @MainActor
+    func switchDatasetIfNeeded(to datasetId: String) async {
+        guard datasetId != activeDatasetId else { return }
+        guard let switchDatasetAction else { return }
+
+        isSwitchingDataset = true
+        datasetSwitchErrorMessage = nil
+        defer { isSwitchingDataset = false }
+
+        do {
+            try await switchDatasetAction(datasetId)
+            activeDatasetId = datasetId
+            activeProfileId = settingsManager.profileId(for: datasetId)
+        } catch {
+            datasetSwitchErrorMessage = error.localizedDescription
+        }
+    }
+
+    func clearDatasetSwitchError() {
+        datasetSwitchErrorMessage = nil
     }
 }

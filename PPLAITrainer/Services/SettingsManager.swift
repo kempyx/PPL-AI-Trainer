@@ -8,6 +8,8 @@ final class SettingsManager {
         static let aiEnabled = "aiEnabled"
         static let confirmBeforeSending = "confirmBeforeSending"
         static let showPremiumContent = "showPremiumContent"
+        static let activeDatasetId = "activeDatasetId"
+        static let profileIdsByDataset = "profileIdsByDataset"
         static let appearanceMode = "appearanceMode"
         static let systemPrompt = "systemPrompt"
         static let aiPromptOverrides = "aiPromptOverrides"
@@ -137,6 +139,27 @@ final class SettingsManager {
     var appearanceMode: String {
         get { defaults.string(forKey: Keys.appearanceMode) ?? "system" }
         set { defaults.set(newValue, forKey: Keys.appearanceMode) }
+    }
+
+    var activeDatasetId: String? {
+        get { defaults.string(forKey: Keys.activeDatasetId) }
+        set {
+            defaults.set(newValue, forKey: Keys.activeDatasetId)
+            notifyChange()
+        }
+    }
+
+    func profileId(for datasetId: String) -> String {
+        if let profile = profileIdsByDataset[datasetId], !profile.isEmpty {
+            return profile
+        }
+        return datasetId
+    }
+
+    func setProfileId(_ profileId: String, for datasetId: String) {
+        var profiles = profileIdsByDataset
+        profiles[datasetId] = profileId
+        defaults.set(profiles, forKey: Keys.profileIdsByDataset)
     }
     
     var systemPrompt: String {
@@ -371,5 +394,9 @@ final class SettingsManager {
         input.utf8.reduce(5381) { (hash, char) in
             ((hash << 5) &+ hash) &+ UInt64(char)
         }
+    }
+
+    private var profileIdsByDataset: [String: String] {
+        defaults.dictionary(forKey: Keys.profileIdsByDataset) as? [String: String] ?? [:]
     }
 }

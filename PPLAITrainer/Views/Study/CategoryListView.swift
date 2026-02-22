@@ -67,6 +67,7 @@ struct GroupDetailView: View {
 // MARK: - Display Category Card (top-level list)
 
 private struct DisplayCategoryCard: View {
+    @Environment(\.dependencies) private var deps
     let item: DisplayCategory
 
     var body: some View {
@@ -117,9 +118,7 @@ private struct DisplayCategoryCard: View {
     @ViewBuilder
     private var categoryIcon: some View {
         let categoryId = item.primaryCategoryId
-        let name = "\(categoryId)"
-        if let path = Bundle.main.path(forResource: name, ofType: "png"),
-           let uiImage = UIImage(contentsOfFile: path) {
+        if let uiImage = deps?.questionAssetProvider.categoryIcon(categoryId: categoryId) {
             Image(uiImage: uiImage)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
@@ -154,6 +153,7 @@ private struct DisplayCategoryCard: View {
 // MARK: - Member Category Card (inside a group)
 
 private struct MemberCategoryCard: View {
+    @Environment(\.dependencies) private var deps
     let item: CategoryWithStats
 
     var body: some View {
@@ -203,9 +203,7 @@ private struct MemberCategoryCard: View {
 
     @ViewBuilder
     private var categoryIcon: some View {
-        let name = "\(item.category.id)"
-        if let path = Bundle.main.path(forResource: name, ofType: "png"),
-           let uiImage = UIImage(contentsOfFile: path) {
+        if let uiImage = deps?.questionAssetProvider.categoryIcon(categoryId: item.category.id) {
             Image(uiImage: uiImage)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
