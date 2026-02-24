@@ -32,21 +32,20 @@ final class DashboardViewModel {
         self.settingsManager = settingsManager
     }
 
-    func loadData() {
+    func loadData() async {
         let activeLeg = settingsManager.activeLeg
         examDateLeg1 = settingsManager.examDateLeg1
         examDateLeg2 = settingsManager.examDateLeg2
         examDateLeg3 = settingsManager.examDateLeg3
         dailyGoalTarget = settingsManager.dailyGoalTarget
-        Task {
-            await loadCategoryProgress(leg: activeLeg)
-            await loadStudyDays()
-            await loadStreaks()
-            await loadWeakAreas(leg: activeLeg)
-            await loadStudyStats()
-            await loadXPData()
-            await loadDailyGoal()
-        }
+
+        await loadCategoryProgress(leg: activeLeg)
+        await loadStudyDays()
+        await loadStreaks()
+        await loadWeakAreas(leg: activeLeg)
+        await loadStudyStats()
+        await loadXPData()
+        await loadDailyGoal()
     }
     
     @MainActor
@@ -54,6 +53,7 @@ final class DashboardViewModel {
         do {
             let formatter = DateFormatter.yyyyMMdd
             let today = formatter.string(from: Date())
+            answeredToday = 0
             if let studyDay = try databaseManager.fetchStudyDays(from: today, to: today).first {
                 answeredToday = studyDay.questionsAnswered
             }
