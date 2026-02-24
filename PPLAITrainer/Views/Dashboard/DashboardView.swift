@@ -109,8 +109,8 @@ struct DashboardView: View {
                 .padding(.bottom, 16)
             }
             .navigationTitle("Dashboard")
-            .onAppear {
-                viewModel.loadData()
+            .task {
+                await viewModel.loadData()
                 triggerDailyGoalCelebrationIfNeeded()
             }
             .onChange(of: viewModel.answeredToday) { _, _ in
