@@ -54,6 +54,7 @@ final class DashboardViewModel {
         do {
             let formatter = DateFormatter.yyyyMMdd
             let today = formatter.string(from: Date())
+            answeredToday = 0
             if let studyDay = try databaseManager.fetchStudyDays(from: today, to: today).first {
                 answeredToday = studyDay.questionsAnswered
             }

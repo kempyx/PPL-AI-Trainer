@@ -413,6 +413,24 @@ struct SettingsView: View {
                     set: { viewModel.settingsManager.streakReminderEnabled = $0 }
                 ))
 
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Daily Goal")
+                            .font(.subheadline)
+                        Spacer()
+                        Text("\(viewModel.dailyGoalTarget) questions")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Picker("Daily Goal", selection: $viewModel.dailyGoalTarget) {
+                        Text("20").tag(20)
+                        Text("40").tag(40)
+                        Text("60").tag(60)
+                    }
+                    .pickerStyle(.segmented)
+                }
+
                 Toggle("Show Premium Content", isOn: $viewModel.showPremiumContent)
             }
             .animation(.default, value: viewModel.settingsManager.notificationsEnabled)

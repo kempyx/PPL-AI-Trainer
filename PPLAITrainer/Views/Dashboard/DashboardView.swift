@@ -5,6 +5,8 @@ struct DashboardView: View {
     @State private var studyViewModel: StudyViewModel
     @AppStorage("dashboardProgressExpanded") private var progressExpanded = true
     @AppStorage("dashboardStreaksExpanded") private var streaksExpanded = true
+    @AppStorage("lastDailyGoalCelebrationDate") private var lastDailyGoalCelebrationDate = ""
+    @State private var showDailyGoalCelebration = false
 
     init(viewModel: DashboardViewModel, studyViewModel: StudyViewModel) {
         self.viewModel = viewModel
@@ -109,6 +111,18 @@ struct DashboardView: View {
             .navigationTitle("Dashboard")
             .onAppear {
                 viewModel.loadData()
+                triggerDailyGoalCelebrationIfNeeded()
+            }
+            .onChange(of: viewModel.answeredToday) { _, _ in
+                triggerDailyGoalCelebrationIfNeeded()
+            }
+            .onChange(of: viewModel.dailyGoalTarget) { _, _ in
+                triggerDailyGoalCelebrationIfNeeded()
+            }
+            .alert("Daily goal complete!", isPresented: $showDailyGoalCelebration) {
+                Button("Awesome") { }
+            } message: {
+                Text("Great consistency. You hit today’s target of \(viewModel.dailyGoalTarget) questions.")
             }
             .overlay {
                 if viewModel.answeredToday >= viewModel.dailyGoalTarget && viewModel.dailyGoalTarget > 0 {
@@ -117,6 +131,16 @@ struct DashboardView: View {
                 }
             }
         }
+    }
+
+    private func triggerDailyGoalCelebrationIfNeeded() {
+        guard viewModel.dailyGoalTarget > 0, viewModel.answeredToday >= viewModel.dailyGoalTarget else { return }
+
+        let today = DateFormatter.yyyyMMdd.string(from: Date())
+        guard lastDailyGoalCelebrationDate != today else { return }
+
+        lastDailyGoalCelebrationDate = today
+        showDailyGoalCelebration = true
     }
 
 #Preview {

@@ -91,6 +91,10 @@ final class SettingsViewModel {
         didSet { settingsManager.examDateLeg3 = examDateLeg3 }
     }
 
+    var dailyGoalTarget: Int {
+        didSet { settingsManager.dailyGoalTarget = dailyGoalTarget }
+    }
+
     var isDefaultPrompt: Bool {
         systemPrompt == SettingsManager.defaultSystemPrompt
     }
@@ -174,6 +178,7 @@ final class SettingsViewModel {
         self.examDateLeg1 = settingsManager.examDateLeg1
         self.examDateLeg2 = settingsManager.examDateLeg2
         self.examDateLeg3 = settingsManager.examDateLeg3
+        self.dailyGoalTarget = settingsManager.dailyGoalTarget
         self.datasetSwitchErrorMessage = nil
 
         loadCurrentKey()
