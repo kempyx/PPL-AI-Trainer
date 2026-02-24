@@ -143,6 +143,8 @@ struct DashboardView: View {
         showDailyGoalCelebration = true
     }
 
+}
+
 #Preview {
     let deps = Dependencies.preview
     DashboardView(
